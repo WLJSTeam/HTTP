@@ -150,7 +150,6 @@ With[{message = packet["DataByteArray"]},
         
         (*Request: _Association*)
         request = parseRequest[message, deserializer, defaultDeserializer]; 
-        Echo[request];
 
         (*Result: _String | _Association*)
         result = ConditionApply[messageHandler, defaultMessageHandler][request]; 
