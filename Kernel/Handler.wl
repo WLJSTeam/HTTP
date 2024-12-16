@@ -140,7 +140,10 @@ CreateType[HTTPHandler, {
 
 handler_HTTPHandler[packet_Association] := 
 With[{message = packet["DataByteArray"]}, 
-    Module[{request, response, pipeline, result, deserializer, defaultDeserializer, serializer, defaultSerializer, messageHandler, defaultMessageHandler}, 
+    Module[{request, response, result, 
+        deserializer, defaultDeserializer, serializer, defaultSerializer, 
+        messageHandler, defaultMessageHandler
+    }, 
         deserializer = handler["Deserializer"]; 
         defaultDeserializer = handler["DefaultDeserializer"]; 
         serializer = handler["Serializer"]; 
@@ -150,7 +153,6 @@ With[{message = packet["DataByteArray"]},
         
         (*Request: _Association*)
         request = parseRequest[message, deserializer, defaultDeserializer]; 
-        Echo[request];
 
         (*Result: _String | _Association*)
         result = ConditionApply[messageHandler, defaultMessageHandler][request]; 
