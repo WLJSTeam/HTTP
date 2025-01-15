@@ -23,10 +23,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[      1060,         20]
-NotebookDataLength[     12424,        281]
-NotebookOptionsPosition[     12653,        275]
-NotebookOutlinePosition[     13055,        291]
-CellTagsIndexPosition[     13012,        288]
+NotebookDataLength[      4518,        117]
+NotebookOptionsPosition[      4932,        113]
+NotebookOutlinePosition[      5339,        129]
+CellTagsIndexPosition[      5296,        126]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -34,16 +34,30 @@ Notebook[{
 
 Cell[CellGroupData[{
 Cell[BoxData[{
- RowBox[{"Get", "[", "\"\<KirillBelov`HTTP`\>\"", "]"}], "\n", 
+ RowBox[{
+  RowBox[{"Get", "[", "\"\<KirillBelov`HTTP`\>\"", "]"}], "\n"}], "\n", 
  RowBox[{
   RowBox[{
    RowBox[{"handler", " ", "=", " ", 
-    RowBox[{"HTTPHandler", "[", 
-     RowBox[{"\"\<DefaultDeserializer\>\"", " ", "->", " ", 
-      RowBox[{"Function", "[", 
-       RowBox[{"ImportByteArray", "[", 
-        RowBox[{"#BodyByteArray", ",", " ", "\"\<RawJSON\>\""}], "]"}], 
-       "]"}]}], "]"}]}], ";"}], " "}], "\n", 
+    RowBox[{"HTTPHandler", "[", "\n", "\t", 
+     RowBox[{
+      RowBox[{"\"\<DefaultDeserializer\>\"", " ", "->", " ", 
+       RowBox[{"Function", "[", 
+        RowBox[{"ImportByteArray", "[", 
+         RowBox[{"#BodyByteArray", ",", " ", "\"\<RawJSON\>\""}], "]"}], 
+        "]"}]}], ",", " ", "\n", "\t", 
+      RowBox[{"\"\<DefaultSerializer\>\"", " ", "->", " ", 
+       RowBox[{"Function", "[", 
+        RowBox[{"ExportString", "[", 
+         RowBox[{"#", ",", " ", "\"\<RawJSON\>\""}], "]"}], "]"}]}], ",", " ",
+       "\n", "\t", 
+      RowBox[{"\"\<DefaultMessageHandler\>\"", " ", "->", " ", 
+       RowBox[{"Function", "[", 
+        RowBox[{"<|", 
+         RowBox[{
+          RowBox[{"\"\<Code\>\"", " ", "->", " ", "200"}], ",", " ", 
+          RowBox[{"\"\<Body\>\"", " ", "->", " ", "\"\<Hello\>\""}]}], "|>"}],
+         "]"}]}]}], "\n", "]"}]}], ";"}], " ", "\n"}], "\n", 
  RowBox[{
   RowBox[{
    RowBox[{"request", " ", "=", " ", 
@@ -62,15 +76,17 @@ Cell[BoxData[{
            RowBox[{"<|", "\n", "\t\t", 
             RowBox[{"\"\<x\>\"", " ", "->", " ", "1"}], "\n", "\t", "|>"}], 
            ",", " ", "\"\<RawJSON\>\""}], "]"}]}]}], "\n", "|>"}]}], "]"}]}], 
-   ";"}], " "}], "\n", 
- RowBox[{"requestString", " ", "=", " ", "\n", 
-  RowBox[{"StringReplace", "[", 
-   RowBox[{
-    RowBox[{"ExportString", "[", 
-     RowBox[{"request", ",", " ", "\"\<HTTPRequest\>\""}], "]"}], ",", " ", 
-    "\n", "\t", 
-    RowBox[{"\"\<\\n\>\"", " ", "->", " ", "\"\<\\r\\n\>\""}]}], "\n", 
-   "]"}]}], "\n", 
+   ";"}], " ", "\n"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"requestString", " ", "=", " ", "\n", 
+    RowBox[{"StringReplace", "[", 
+     RowBox[{
+      RowBox[{"ExportString", "[", 
+       RowBox[{"request", ",", " ", "\"\<HTTPRequest\>\""}], "]"}], ",", " ", 
+      "\n", "\t", 
+      RowBox[{"\"\<\\n\>\"", " ", "->", " ", "\"\<\\r\\n\>\""}]}], "\n", 
+     "]"}]}], ";"}], " ", "\n"}], "\n", 
  RowBox[{"handler", "[", 
   RowBox[{"<|", "\n", "\t", 
    RowBox[{"\"\<DataByteArray\>\"", " ", "->", " ", 
@@ -78,203 +94,25 @@ Cell[BoxData[{
   "]"}]}], "Code",
  CellChangeTimes->{{3.9423769037214355`*^9, 3.9423769208317623`*^9}, {
   3.942382916125355*^9, 3.942382916236864*^9}, {3.942390404600254*^9, 
-  3.9423904154751415`*^9}, {3.9423904947121315`*^9, 3.942390559051319*^9}},
- CellLabel->"In[15]:=",ExpressionUUID->"f032ca77-4a53-244f-b2cc-eb58abea4195"],
+  3.9423904154751415`*^9}, {3.9423904947121315`*^9, 3.942390559051319*^9}, {
+  3.942460521633253*^9, 3.9424605271560726`*^9}, {3.9424606166250553`*^9, 
+  3.942460661786684*^9}, {3.942460706298271*^9, 3.942460710905573*^9}, {
+  3.9424631238809624`*^9, 3.9424632028477497`*^9}},
+ CellLabel->"In[41]:=",ExpressionUUID->"f032ca77-4a53-244f-b2cc-eb58abea4195"],
 
-Cell[BoxData["\<\"POST /?x=1 HTTP/1.1\\r\\nhost: \
-example.com\\r\\ncontent-length: 10\\r\\ncontent-type: \
-application/json;charset=utf-8\\r\\nuser-agent: Wolfram HTTPClient 14.1\\r\\n\
-\\r\\n{\\r\\n\\t\\\"x\\\":1\\r\\n}\"\>"], "Output",
- CellChangeTimes->{3.9423904957321625`*^9, 3.942390560516638*^9},
- CellLabel->"Out[18]=",ExpressionUUID->"7e1a0218-aaf8-e242-a222-474f06d11e95"],
-
-Cell[BoxData[
- RowBox[{"\[LeftAssociation]", 
-  RowBox[{
-   RowBox[{"\<\"Method\"\>", "\[Rule]", "\<\"POST\"\>"}], ",", 
-   RowBox[{"\<\"Path\"\>", "\[Rule]", "\<\"/\"\>"}], ",", 
-   RowBox[{"\<\"Query\"\>", "\[Rule]", 
-    RowBox[{"\[LeftAssociation]", 
-     RowBox[{"\<\"x\"\>", "\[Rule]", "\<\"1\"\>"}], "\[RightAssociation]"}]}],
-    ",", 
-   RowBox[{"\<\"Version\"\>", "\[Rule]", "\<\"HTTP/1.1\"\>"}], ",", 
-   RowBox[{"\<\"Headers\"\>", "\[Rule]", 
-    RowBox[{"\[LeftAssociation]", 
-     RowBox[{
-      RowBox[{"\<\"host\"\>", "\[Rule]", "\<\"example.com\"\>"}], ",", 
-      RowBox[{"\<\"content-length\"\>", "\[Rule]", "\<\"10\"\>"}], ",", 
-      RowBox[{"\<\"content-type\"\>", 
-       "\[Rule]", "\<\"application/json;charset=utf-8\"\>"}], ",", 
-      RowBox[{"\<\"user-agent\"\>", 
-       "\[Rule]", "\<\"Wolfram HTTPClient 14.1\"\>"}]}], 
-     "\[RightAssociation]"}]}], ",", 
-   RowBox[{"\<\"BodyByteArray\"\>", "\[RuleDelayed]", 
-    InterpretationBox[
-     RowBox[{
-      TagBox["ByteArray",
-       "SummaryHead"], "[", 
-      DynamicModuleBox[{Typeset`open$$ = False, Typeset`embedState$$ = 
-       "Ready"}, 
-       TemplateBox[{
-         PaneSelectorBox[{False -> GridBox[{{
-               GridBox[{{
-                  TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                GridBoxAlignment -> {
-                 "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, AutoDelete -> 
-                False, GridBoxItemSize -> {
-                 "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                GridBoxSpacings -> {
-                 "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                BaseStyle -> {
-                 ShowStringCharacters -> False, NumberMarks -> False, 
-                  PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-             GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}}, 
-             AutoDelete -> False, 
-             GridBoxItemSize -> {
-              "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-             BaselinePosition -> {1, 1}], True -> GridBox[{{
-               GridBox[{{
-                  TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                GridBoxAlignment -> {
-                 "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, AutoDelete -> 
-                False, GridBoxItemSize -> {
-                 "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                GridBoxSpacings -> {
-                 "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                BaseStyle -> {
-                 ShowStringCharacters -> False, NumberMarks -> False, 
-                  PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-             GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}}, 
-             AutoDelete -> False, 
-             GridBoxItemSize -> {
-              "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-             BaselinePosition -> {1, 1}]}, 
-          Dynamic[Typeset`open$$], ImageSize -> Automatic]},
-        "SummaryPanel"],
-       DynamicModuleValues:>{}], "]"}],
-     ByteArray[{123, 13, 10, 9, 34, 120, 34, 58, 49, 13, 10, 125}],
-     Editable->False,
-     SelectWithContents->True,
-     Selectable->False]}], ",", 
-   RowBox[{"\<\"BodyBytes\"\>", "\[RuleDelayed]", 
-    RowBox[{"Normal", "[", 
-     InterpretationBox[
-      RowBox[{
-       TagBox["ByteArray",
-        "SummaryHead"], "[", 
-       DynamicModuleBox[{Typeset`open$$ = False, Typeset`embedState$$ = 
-        "Ready"}, 
-        TemplateBox[{
-          PaneSelectorBox[{False -> GridBox[{{
-                GridBox[{{
-                   TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                 GridBoxAlignment -> {
-                  "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, AutoDelete -> 
-                 False, GridBoxItemSize -> {
-                  "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                 GridBoxSpacings -> {
-                  "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                 BaseStyle -> {
-                  ShowStringCharacters -> False, NumberMarks -> False, 
-                   PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-              GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}}, 
-              AutoDelete -> False, 
-              GridBoxItemSize -> {
-               "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-              BaselinePosition -> {1, 1}], True -> GridBox[{{
-                GridBox[{{
-                   TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                 GridBoxAlignment -> {
-                  "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, AutoDelete -> 
-                 False, 
-                 GridBoxItemSize -> {
-                  "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                 GridBoxSpacings -> {
-                  "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                 BaseStyle -> {
-                  ShowStringCharacters -> False, NumberMarks -> False, 
-                   PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-              GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}}, 
-              AutoDelete -> False, 
-              GridBoxItemSize -> {
-               "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-              BaselinePosition -> {1, 1}]}, 
-           Dynamic[Typeset`open$$], ImageSize -> Automatic]},
-         "SummaryPanel"],
-        DynamicModuleValues:>{}], "]"}],
-      ByteArray[{123, 13, 10, 9, 34, 120, 34, 58, 49, 13, 10, 125}],
-      Editable->False,
-      SelectWithContents->True,
-      Selectable->False], "]"}]}], ",", 
-   RowBox[{"\<\"Body\"\>", "\[RuleDelayed]", 
-    RowBox[{"ByteArrayToString", "[", 
-     RowBox[{
-      InterpretationBox[
-       RowBox[{
-        TagBox["ByteArray",
-         "SummaryHead"], "[", 
-        DynamicModuleBox[{Typeset`open$$ = False, Typeset`embedState$$ = 
-         "Ready"}, 
-         TemplateBox[{
-           PaneSelectorBox[{False -> GridBox[{{
-                 GridBox[{{
-                    TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                  GridBoxAlignment -> {
-                   "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, 
-                  AutoDelete -> False, 
-                  GridBoxItemSize -> {
-                   "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                  GridBoxSpacings -> {
-                   "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                  BaseStyle -> {
-                   ShowStringCharacters -> False, NumberMarks -> False, 
-                    PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-               GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}},
-                AutoDelete -> False, 
-               GridBoxItemSize -> {
-                "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-               BaselinePosition -> {1, 1}], True -> GridBox[{{
-                 GridBox[{{
-                    TagBox["\"12 bytes\"", "SummaryItem"]}}, 
-                  GridBoxAlignment -> {
-                   "Columns" -> {{Left}}, "Rows" -> {{Automatic}}}, 
-                  AutoDelete -> False, 
-                  GridBoxItemSize -> {
-                   "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-                  GridBoxSpacings -> {
-                   "Columns" -> {{2}}, "Rows" -> {{Automatic}}}, 
-                  BaseStyle -> {
-                   ShowStringCharacters -> False, NumberMarks -> False, 
-                    PrintPrecision -> 3, ShowSyntaxStyles -> False}]}}, 
-               GridBoxAlignment -> {"Columns" -> {{Left}}, "Rows" -> {{Top}}},
-                AutoDelete -> False, 
-               GridBoxItemSize -> {
-                "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}, 
-               BaselinePosition -> {1, 1}]}, 
-            Dynamic[Typeset`open$$], ImageSize -> Automatic]},
-          "SummaryPanel"],
-         DynamicModuleValues:>{}], "]"}],
-       ByteArray[{123, 13, 10, 9, 34, 120, 34, 58, 49, 13, 10, 125}],
-       Editable->False,
-       SelectWithContents->True,
-       Selectable->False], ",", "\<\"UTF-8\"\>"}], "]"}]}], ",", 
-   RowBox[{"\<\"Data\"\>", "\[RuleDelayed]", 
-    RowBox[{"\[LeftAssociation]", 
-     RowBox[{"\<\"x\"\>", "\[Rule]", "1"}], "\[RightAssociation]"}]}]}], 
-  "\[RightAssociation]"}]], "Echo",
+Cell[BoxData["\<\"HTTP/1.1 200 OK\\r\\ncontent-length: 32\\r\\ncontent-type: \
+text/html;charset=utf-8\\r\\n\\r\\n{\\n\\t\\\"Code\\\":200,\\n\\t\\\"Body\\\":\
+\\\"Hello\\\"\\n}\"\>"], "Output",
  CellChangeTimes->{
-  3.9423905605379753`*^9},ExpressionUUID->"709c8c4f-9bc9-6a45-98d2-\
-6d17d86c9426"],
-
-Cell[BoxData["\<\"HTTP/1.1 200 OK\\r\\ncontent-length: 35\\r\\ncontent-type: \
-text/html;charset=utf-8\\r\\n\\r\\n{\\n\\t\\\"Code\\\":404,\\n\\t\\\"Body\\\":\
-\\\"NotFound\\\"\\n}\"\>"], "Output",
- CellChangeTimes->{3.9423904957321625`*^9, 3.9423905605715847`*^9},
- CellLabel->"Out[19]=",ExpressionUUID->"c0c78507-819f-5f4a-b234-eb9b87355dc1"]
+  3.9423904957321625`*^9, 3.942390560516638*^9, 3.9424569081125927`*^9, 
+   3.94246049359807*^9, 3.9424605278946075`*^9, 3.9424606650759163`*^9, 
+   3.9424607114480267`*^9, 3.9424631318387146`*^9, {3.9424631819980583`*^9, 
+   3.9424632078812504`*^9}},
+ CellLabel->"Out[45]=",ExpressionUUID->"35841615-7374-354c-ae42-8a5bf95fab07"]
 }, Open  ]]
 },
-WindowSize->{569.25, 624.75},
-WindowMargins->{{Automatic, 0}, {0, Automatic}},
+WindowSize->{845.25, 688.5},
+WindowMargins->{{444, Automatic}, {63.75, Automatic}},
 FrontEndVersion->"14.1 for Microsoft Windows (64-bit) (July 16, 2024)",
 StyleDefinitions->"Default.nb",
 ExpressionUUID->"bc965f12-bcb2-bd4c-b471-624281395f92"
@@ -291,10 +129,8 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[1482, 35, 2001, 46, 313, "Code",ExpressionUUID->"f032ca77-4a53-244f-b2cc-eb58abea4195"],
-Cell[3486, 83, 383, 5, 336, "Output",ExpressionUUID->"7e1a0218-aaf8-e242-a222-474f06d11e95"],
-Cell[3872, 90, 8419, 176, 190, "Echo",ExpressionUUID->"709c8c4f-9bc9-6a45-98d2-6d17d86c9426"],
-Cell[12294, 268, 343, 4, 241, "Output",ExpressionUUID->"c0c78507-819f-5f4a-b234-eb9b87355dc1"]
+Cell[1482, 35, 2887, 65, 454, "Code",ExpressionUUID->"f032ca77-4a53-244f-b2cc-eb58abea4195"],
+Cell[4372, 102, 544, 8, 241, "Output",ExpressionUUID->"35841615-7374-354c-ae42-8a5bf95fab07"]
 }, Open  ]]
 }
 ]

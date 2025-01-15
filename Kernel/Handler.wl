@@ -45,7 +45,7 @@ Once[Map[If[Length[PacletFind[#]] === 0, PacletInstall[#]]&][{
 
 BeginPackage["KirillBelov`HTTP`Handler`", {
     "KirillBelov`Objects`", 
-    "KirillBelov`Internal`Funcs`", 
+    "KirillBelov`Internal`Functions`", 
     "KirillBelov`Internal`Binary`"
 }]; 
 
