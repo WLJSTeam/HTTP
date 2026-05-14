@@ -2,21 +2,21 @@
 
 PacletObject[
   <|
-    "Name" -> "KirillBelov/HTTP",
+    "Name" -> "WLJS/HTTP",
     "Description" -> "HTTP",
-    "Creator" -> "Kirill Belov",
+    "Creator" -> "Kirill",
     "License" -> "MIT",
-    "PublisherID" -> "KirillBelov",
+    "PublisherID" -> "WLJS",
     "Version" -> "1.0.0",
     "WolframVersion" -> "13+",
-    "PrimaryContext" -> "KirillBelov`HTTP`",
+    "PrimaryContext" -> "WLJS`HTTP`",
     "Extensions" -> {
       {
         "Kernel",
         "Root" -> "Kernel",
         "Context" -> {
-          {"KirillBelov`HTTP`", "HTTP.wl"}, 
-          {"KirillBelov`HTTP`Handler`", "Handler.wl"}
+          {"WLJS`HTTP`", "HTTP.wl"},
+          {"WLJS`HTTP`Handler`", "Handler.wl"}
         },
         "Symbols" -> {}
       },

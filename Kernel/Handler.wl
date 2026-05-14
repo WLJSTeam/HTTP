@@ -29,25 +29,15 @@
 (*+-----------------------------------------------+*)
 
 
-(* ::Section::Closed:: *)
-(*Requarements*)
-
-
-Once[Map[If[Length[PacletFind[#]] === 0, PacletInstall[#]]&][{
-    "KirillBelov/Objects", 
-    "KirillBelov/Internal"
-}]]; 
-
-
 (* ::Section:: *)
 (*Begin packge*)
 
 
-BeginPackage["KirillBelov`HTTP`Handler`", {
-    "KirillBelov`Objects`", 
-    "KirillBelov`Internal`Functions`", 
-    "KirillBelov`Internal`Binary`"
-}]; 
+BeginPackage["WLJS`HTTP`Handler`", {
+    "WLJS`Objects`",
+    "WLJS`Internal`Functions`",
+    "WLJS`Internal`Binary`"
+}];
 
 
 (* ::Section::Closed:: *)
@@ -57,65 +47,65 @@ BeginPackage["KirillBelov`HTTP`Handler`", {
 ClearAll["`*"]
 
 
-HTTPPacketQ::usage = 
-"HTTPPacketQ[packet] check that message was sent via HTTP protocol."; 
+HTTPPacketQ::usage =
+"HTTPPacketQ[packet] check that message was sent via HTTP protocol.";
 
 
-HTTPPacketLength::usage = 
-"HTTPPacketLength[packet] returns expected message length."; 
+HTTPPacketLength::usage =
+"HTTPPacketLength[packet] returns expected message length.";
 
 
-HTTPHandler::usage = 
-"HTTPHandler[opts] mutable type for the handling HTTP request."; 
+HTTPHandler::usage =
+"HTTPHandler[opts] mutable type for the handling HTTP request.";
 
 
 (* ::Section::Closed:: *)
 (*Begin private context*)
 
 
-Begin["`Private`"]; 
+Begin["`Private`"];
 
 
 (* ::Section::Closed:: *)
 (*HTTPPacketQ*)
 
 
-HTTPPacketQ[___] := False; 
+HTTPPacketQ[___] := False;
 
 
-HTTPPacketQ[packet_Association?AssociationQ] /; packet["Event"] === "Received" := 
-With[{message = packet["DataByteArray"]}, 
-    Module[{head}, 
-        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]]; 
-        
+HTTPPacketQ[packet_Association?AssociationQ] /; packet["Event"] === "Received" :=
+With[{message = packet["DataByteArray"]},
+    Module[{head},
+        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]];
+
         (*Return: True | False*)
         And[
             StringLength[head] != Length[message], (* equivalent of the StringContainsQ[message, $httpEndOfHead] *)
             StringContainsQ[head, StartOfString ~~ $httpMethods ~~ " /"]
         ]
     ]
-]; 
+];
 
 
 (* ::Section::Closed:: *)
 (*HTTPPacketLength*)
 
 
-HTTPPacketLength[packet_Association] := 
-With[{message = packet["DataByteArray"]}, 
-    Module[{head}, 
-        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]]; 
+HTTPPacketLength[packet_Association] :=
+With[{message = packet["DataByteArray"]},
+    Module[{head},
+        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]];
 
         (*Return: _Integer*)
         Which[
-            StringContainsQ[head, "Content-Length: ", IgnoreCase -> True], 
-                StringLength[head] + 4 + 
-                ToExpression[StringExtract[ToLowerCase[head], "content-length: " -> 2, "\r\n" -> 1]], 
-            True, 
+            StringContainsQ[head, "Content-Length: ", IgnoreCase -> True],
+                StringLength[head] + 4 +
+                ToExpression[StringExtract[ToLowerCase[head], "content-length: " -> 2, "\r\n" -> 1]],
+            True,
                 Length[message]
         ]
     ]
-]; 
+];
 
 
 (* ::Section:: *)
@@ -127,46 +117,46 @@ With[{message = packet["DataByteArray"]},
 
 
 CreateType[HTTPHandler, {
-    "MessageHandler" -> <||>, 
-    "DefaultMessageHandler" -> Function[<|"Code" -> 404, "Body" -> "NotFound"|>], 
-    "Deserializer" -> <||>, 
-    "DefaultDeserializer" -> $deserializer, 
-    "Serializer" -> <||>, 
-    "DefaultSerializer" -> $serializer, 
-    "Logger" -> None, 
+    "MessageHandler" -> <||>,
+    "DefaultMessageHandler" -> Function[<|"Code" -> 404, "Body" -> "NotFound"|>],
+    "Deserializer" -> <||>,
+    "DefaultDeserializer" -> $deserializer,
+    "Serializer" -> <||>,
+    "DefaultSerializer" -> $serializer,
+    "Logger" -> None,
     "Icon" -> Import[FileNameJoin[Join[FileNameSplit[$InputFileName][[ ;; -3]], {"Images", "http-logo.png"}]]]
-}]; 
+}];
 
 
-handler_HTTPHandler[packet_Association] := 
-With[{message = packet["DataByteArray"]}, 
-    Module[{request, response, result, 
-        deserializer, defaultDeserializer, serializer, defaultSerializer, 
+handler_HTTPHandler[packet_Association] :=
+With[{message = packet["DataByteArray"]},
+    Module[{request, response, result,
+        deserializer, defaultDeserializer, serializer, defaultSerializer,
         messageHandler, defaultMessageHandler
-    }, 
-        deserializer = handler["Deserializer"]; 
-        defaultDeserializer = handler["DefaultDeserializer"]; 
-        serializer = handler["Serializer"]; 
-        defaultSerializer = handler["DefaultSerializer"]; 
-        messageHandler = handler["MessageHandler"]; 
-        defaultMessageHandler = handler["DefaultMessageHandler"]; 
-        
+    },
+        deserializer = handler["Deserializer"];
+        defaultDeserializer = handler["DefaultDeserializer"];
+        serializer = handler["Serializer"];
+        defaultSerializer = handler["DefaultSerializer"];
+        messageHandler = handler["MessageHandler"];
+        defaultMessageHandler = handler["DefaultMessageHandler"];
+
         (*Request: _Association*)
-        request = parseRequest[message, deserializer, defaultDeserializer]; 
+        request = parseRequest[message, deserializer, defaultDeserializer];
 
         (*Result: _String | _Association*)
-        result = ConditionApply[messageHandler, defaultMessageHandler][request]; 
+        result = ConditionApply[messageHandler, defaultMessageHandler][request];
 
         (*Result: HTTPResponse[]*)
-        response = createResponse[result, serializer, defaultSerializer]; 
+        response = createResponse[result, serializer, defaultSerializer];
 
         (*Return: _String | ByteArray[]*)
         Which[
-            StringQ @ response["Body"], ExportString[response, "HTTPResponse", CharacterEncoding -> "UTF-8"], 
+            StringQ @ response["Body"], ExportString[response, "HTTPResponse", CharacterEncoding -> "UTF-8"],
             True, ExportByteArray[response, "HTTPResponse", CharacterEncoding -> "UTF-8"]
         ]
     ]
-]; 
+];
 
 
 (* ::Section::Closed:: *)
@@ -174,90 +164,90 @@ With[{message = packet["DataByteArray"]},
 
 
 HTTPHandler /: AddTo[tcp_, http_HTTPHandler] := (
-    tcp["CompleteHandler", "HTTP"] = HTTPPacketQ -> HTTPPacketLength; 
-    tcp["MessageHandler", "HTTP"] = HTTPPacketQ -> http; 
+    tcp["CompleteHandler", "HTTP"] = HTTPPacketQ -> HTTPPacketLength;
+    tcp["MessageHandler", "HTTP"] = HTTPPacketQ -> http;
     tcp
-); 
+);
 
 
 (* ::Section::Closed:: *)
 (*Internal*)
 
 
-$httpMethods = {"GET", "PUT", "DELETE", "HEAD", "POST", "CONNECT", "OPTIONS", "TRACE", "PATCH"}; 
+$httpMethods = {"GET", "PUT", "DELETE", "HEAD", "POST", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
 
 
-$httpEndOfHead = StringToByteArray["\r\n\r\n"]; 
+$httpEndOfHead = StringToByteArray["\r\n\r\n"];
 
 
-$errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>; 
+$errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
-parseRequest[message_ByteArray, deserializer_, defaultDeserializer_] := 
-Module[{request, headByteArray, head, headers, body, bodyByteArray, encoding}, 
-    {headByteArray, bodyByteArray} = BytesSplit[message, $httpEndOfHead -> 1]; 
-    head = ByteArrayToString[headByteArray]; 
-    
+parseRequest[message_ByteArray, deserializer_, defaultDeserializer_] :=
+Module[{request, headByteArray, head, headers, body, bodyByteArray, encoding},
+    {headByteArray, bodyByteArray} = BytesSplit[message, $httpEndOfHead -> 1];
+    head = ByteArrayToString[headByteArray];
+
     request = First @ StringCases[
-        StringExtract[head, "\r\n" -> 1], 
+        StringExtract[head, "\r\n" -> 1],
         method__ ~~ " " ~~ url__ ~~ " " ~~ version__ :> Join[
-            <|"Method" -> method|>, 
-            
-            MapAt[Association, Key["Query"]] @ 
-            MapAt[URLBuild, Key["Path"]] @ 
-            <|URLParse[url]|>[[{"Path", "Query"}]], 
-            
+            <|"Method" -> method|>,
+
+            MapAt[Association, Key["Query"]] @
+            MapAt[URLBuild, Key["Path"]] @
+            <|URLParse[url]|>[[{"Path", "Query"}]],
+
             <|"Version" -> version|>
-        ], 
+        ],
         IgnoreCase -> True
-    ]; 
+    ];
 
     request["Headers"] = Association[
         Map[Rule[#1, StringRiffle[{##2}, ":"]]& @@ Map[StringTrim]@StringSplit[#, ":"] &]@
         StringExtract[head, "\r\n\r\n" -> 1, "\r\n" -> 2 ;; ]
-    ]; 
+    ];
 
-    encoding = getCharsetEncoding[getContentType[request]]; 
+    encoding = getCharsetEncoding[getContentType[request]];
 
-    With[{$bodyByteArray = bodyByteArray, $encoding = encoding}, 
-        request["BodyByteArray"] := $bodyByteArray; 
-        request["BodyBytes"] := Normal[$bodyByteArray]; 
-        request["Body"] := ByteArrayToString[$bodyByteArray, $encoding]; 
-    ]; 
+    With[{$bodyByteArray = bodyByteArray, $encoding = encoding},
+        request["BodyByteArray"] := $bodyByteArray;
+        request["BodyBytes"] := Normal[$bodyByteArray];
+        request["Body"] := ByteArrayToString[$bodyByteArray, $encoding];
+    ];
 
-    With[{$data = ConditionApply[deserializer, defaultDeserializer][request]}, 
-        request["Data"] := $data; 
-    ]; 
+    With[{$data = ConditionApply[deserializer, defaultDeserializer][request]},
+        request["Data"] := $data;
+    ];
 
     (*Return: <|
-		"Metod" -> "GET" | "POST" | .., 
-        "Path" -> "/path/to/resource", 
-        "Query" -> <|"key1" -> "value1"|>, 
-        "Version" -> "1.1", 
-        "Headers" -> <|"Connection" -> "keep-alive"|>, 
-        "BodyByteArray" :> ByteArray[{}], 
-        "BodyBytes" :> Normal[ByteArray[{}]], 
-        "Body" :> ByteArrayToString[ByteArray[{}], "UTF-8"], 
+		"Metod" -> "GET" | "POST" | ..,
+        "Path" -> "/path/to/resource",
+        "Query" -> <|"key1" -> "value1"|>,
+        "Version" -> "1.1",
+        "Headers" -> <|"Connection" -> "keep-alive"|>,
+        "BodyByteArray" :> ByteArray[{}],
+        "BodyBytes" :> Normal[ByteArray[{}]],
+        "Body" :> ByteArrayToString[ByteArray[{}], "UTF-8"],
         "Data" :> expr[..]
 	|>*)
     request
-]; 
+];
 
 
-getCharsetEncoding[contentType_String] := 
-If[StringContainsQ[contentType, "charset="], 
-    If[MissingQ[#], "ISOLatin1", #]& @ 
-    $charsetToEncoding @ 
-    ToLowerCase @ 
-    StringTrim @ 
-    First @ 
-    StringSplit[StringExtract[contentType, "charset=" -> 2], ";"], 
+getCharsetEncoding[contentType_String] :=
+If[StringContainsQ[contentType, "charset="],
+    If[MissingQ[#], "ISOLatin1", #]& @
+    $charsetToEncoding @
+    ToLowerCase @
+    StringTrim @
+    First @
+    StringSplit[StringExtract[contentType, "charset=" -> 2], ";"],
 (*Else*)
     "ISOLatin1"
-]; 
+];
 
 
-getContentType[request_Association] := 
+getContentType[request_Association] :=
 First @ KeySelect[request["Headers"], StringMatchQ[#, "content-type", IgnoreCase -> True]&];
 
 
@@ -305,94 +295,94 @@ $charsetToEncoding = <|
 |>;
 
 
-getContentLength[data_] := 
+getContentLength[data_] :=
 Which[
-    AssociationQ[data] && KeyExistsQ[data, "Body"], 
-        If[ByteArrayQ[data["Body"]], 
-            Length[data["Body"]], 
+    AssociationQ[data] && KeyExistsQ[data, "Body"],
+        If[ByteArrayQ[data["Body"]],
+            Length[data["Body"]],
         (*Else*)
             StringLength[data["Body"]]
-        ], 
+        ],
 
-    StringQ[data], 
-        StringLength[data], 
-    ByteArrayQ[data], 
+    StringQ[data],
+        StringLength[data],
+    ByteArrayQ[data],
         Length[data]
-]; 
+];
 
 
-createResponse[assoc_Association, serializer_, defaultSerializer_] := 
-Module[{data, body, headers, metadata}, 
-    data = ConditionApply[serializer, defaultSerializer][assoc]; 
+createResponse[assoc_Association, serializer_, defaultSerializer_] :=
+Module[{data, body, headers, metadata},
+    data = ConditionApply[serializer, defaultSerializer][assoc];
 
     metadata = <|
-        "ContentType" -> "text/html; charset=utf-8", 
+        "ContentType" -> "text/html; charset=utf-8",
         "Headers" -> <|
             "Content-Length" -> getContentLength[data]
-        |>, 
+        |>,
         "StatusCode" -> 200
-    |>; 
+    |>;
 
-    If[AssociationQ[data], 
-        If[KeyExistsQ[data, "ContentType"], metadata["ContentType"] = data["ContentType"]]; 
-        If[KeyExistsQ[data, "Headers"], metadata["Headers"] = data["Headers"] ~ Join ~ metadata["Headers"]]; 
-        If[KeyExistsQ[data, "StatusCode"], metadata["StatusCode"] = data["StatusCode"]]; 
-        If[KeyExistsQ[data, "Body"], body = data["Body"]]; 
-    ]; 
+    If[AssociationQ[data],
+        If[KeyExistsQ[data, "ContentType"], metadata["ContentType"] = data["ContentType"]];
+        If[KeyExistsQ[data, "Headers"], metadata["Headers"] = data["Headers"] ~ Join ~ metadata["Headers"]];
+        If[KeyExistsQ[data, "StatusCode"], metadata["StatusCode"] = data["StatusCode"]];
+        If[KeyExistsQ[data, "Body"], body = data["Body"]];
+    ];
 
-    If[StringQ[data] || ByteArrayQ[data], 
+    If[StringQ[data] || ByteArrayQ[data],
         body = data
-    ]; 
+    ];
 
     (*Return: HTTPResponse[]*)
     HTTPResponse[body, metadata]
-]; 
+];
 
 
 (* ::Section::Closed:: *)
 (*Serialization*)
 
 
-$deserializer[request_Association?AssociationQ] := 
-request["Body"]; 
+$deserializer[request_Association?AssociationQ] :=
+request["Body"];
 
 
-$serializer[expr_] := 
-ExportString[expr, "ExpressionJSON"]; 
+$serializer[expr_] :=
+ExportString[expr, "ExpressionJSON"];
 
 
-$serializer[assoc_Association] := 
-ExportString[assoc, "RawJSON"]; 
+$serializer[assoc_Association] :=
+ExportString[assoc, "RawJSON"];
 
 
-$serializer[list_List] := 
-ExportString[list, "RawJSON"]; 
+$serializer[list_List] :=
+ExportString[list, "RawJSON"];
 
 
-$serializer[image_Image] := 
-ExportString[image, "PNG"]; 
+$serializer[image_Image] :=
+ExportString[image, "PNG"];
 
 
-$serializer[image_Graphics] := 
-ExportString[image, "SVG"]; 
+$serializer[image_Graphics] :=
+ExportString[image, "SVG"];
 
 
-$serializer[text_String] := 
-text; 
+$serializer[text_String] :=
+text;
 
-$serializer[bytes_ByteArray] := 
-bytes; 
+$serializer[bytes_ByteArray] :=
+bytes;
 
 
 (* ::Section::Closed:: *)
 (*End private context*)
 
 
-End[(*`Private`*)]; 
+End[(*`Private`*)];
 
 
 (* ::Section::Closed:: *)
 (*End packet*)
 
 
-EndPackage[(*Kirill`HTTP`*)]; 
+EndPackage[(*Kirill`HTTP`*)];

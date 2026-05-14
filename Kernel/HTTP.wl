@@ -1,15 +1,9 @@
 (* ::Package:: *)
 
-Once[Map[If[Length[PacletFind[#]] === 0, PacletInstall[#]]&][{
-    "KirillBelov/Objects", 
-    "KirillBelov/Internal"
-}]]; 
+BeginPackage["WLJS`HTTP`", {
+    "WLJS`HTTP`Handler`",
+    "WLJS`HTTP`Extensions`"
+}];
 
 
-BeginPackage["KirillBelov`HTTP`"]; 
-
-
-EndPackage[(*Kirill`HTTP`*)]; 
-
-
-Get["KirillBelov`HTTP`Handler`"]; 
+EndPackage[];
