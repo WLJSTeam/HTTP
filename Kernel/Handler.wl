@@ -44,7 +44,7 @@ BeginPackage["WLJS`HTTP`Handler`", {
 (*Names*)
 
 
-ClearAll["`*"]
+ClearAll["`*"];
 
 
 HTTPPacketQ::usage =
@@ -73,17 +73,22 @@ Begin["`Private`"];
 HTTPPacketQ[___] := False;
 
 
-HTTPPacketQ[packet_Association?AssociationQ] /; packet["Event"] === "Received" :=
-With[{message = packet["DataByteArray"]},
-    Module[{head},
-        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]];
+byteArrayContainsQ[byteArray_ByteArray, substring_String] :=
+StringContainsQ[ByteArrayToString[byteArray, "ISOLatin1"], substring];
 
-        (*Return: True | False*)
-        And[
-            StringLength[head] != Length[message], (* equivalent of the StringContainsQ[message, $httpEndOfHead] *)
-            StringContainsQ[head, StartOfString ~~ $httpMethods ~~ " /"]
-        ]
-    ]
+
+byteArrayContainsQ[byteArray_ByteArray, subbyteArray_ByteArray] :=
+byteArrayContainsQ[byteArray, ByteArrayToString[substring, "ISOLatin1"]];
+
+
+byteArrayStringMatchQ[byteArray_ByteArray, substring_] :=
+StringMatchQ[ByteArrayToString[byteArray, "ISOLatin1"], substring, IgnoreCase -> True];
+
+
+HTTPPacketQ[packet_Association?AssociationQ] /; KeyExistsQ[packet, "DataByteArray"] :=
+With[{dataByteArray = packet["DataByteArray"]},
+    byteArrayContainsQ[dataByteArray, $httpEndOfHead] &&
+    byteArrayStringMatchQ[dataByteArray, StartOfString ~~ $httpMethods ~~ " /"]
 ];
 
 
@@ -92,9 +97,9 @@ With[{message = packet["DataByteArray"]},
 
 
 HTTPPacketLength[packet_Association] :=
-With[{message = packet["DataByteArray"]},
+With[{dataByteArray = packet["DataByteArray"]},
     Module[{head},
-        head = ByteArrayToString[BytesSplit[message, $httpEndOfHead -> 1][[1]]];
+        head = ByteArrayToString[BytesSplit[dataByteArray, $httpEndOfHead -> 1][[1]]];
 
         (*Return: _Integer*)
         Which[
@@ -102,7 +107,7 @@ With[{message = packet["DataByteArray"]},
                 StringLength[head] + 4 +
                 ToExpression[StringExtract[ToLowerCase[head], "content-length: " -> 2, "\r\n" -> 1]],
             True,
-                Length[message]
+                Length[dataByteArray]
         ]
     ]
 ];
@@ -129,7 +134,7 @@ CreateType[HTTPHandler, {
 
 
 handler_HTTPHandler[packet_Association] :=
-With[{message = packet["DataByteArray"]},
+With[{dataByteArray = packet["DataByteArray"]},
     Module[{request, response, result,
         deserializer, defaultDeserializer, serializer, defaultSerializer,
         messageHandler, defaultMessageHandler
@@ -142,7 +147,7 @@ With[{message = packet["DataByteArray"]},
         defaultMessageHandler = handler["DefaultMessageHandler"];
 
         (*Request: _Association*)
-        request = parseRequest[message, deserializer, defaultDeserializer];
+        request = parseRequest[dataByteArray, deserializer, defaultDeserializer];
 
         (*Result: _String | _Association*)
         result = ConditionApply[messageHandler, defaultMessageHandler][request];
@@ -183,9 +188,9 @@ $httpEndOfHead = StringToByteArray["\r\n\r\n"];
 $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
-parseRequest[message_ByteArray, deserializer_, defaultDeserializer_] :=
+parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
 Module[{request, headByteArray, head, headers, body, bodyByteArray, encoding},
-    {headByteArray, bodyByteArray} = BytesSplit[message, $httpEndOfHead -> 1];
+    {headByteArray, bodyByteArray} = BytesSplit[dataByteArray, $httpEndOfHead -> 1];
     head = ByteArrayToString[headByteArray];
 
     request = First @ StringCases[
