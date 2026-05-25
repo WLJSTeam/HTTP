@@ -86,7 +86,7 @@ StringMatchQ[ByteArrayToString[byteArray, "ISOLatin1"], substring, IgnoreCase ->
 
 
 HTTPPacketQ[packet_Association?AssociationQ] /; KeyExistsQ[packet, "DataByteArray"] :=
-With[{dataByteArray = packet["DataByteArray"]},
+With[{message = packet["Data"]},
     byteArrayContainsQ[dataByteArray, $httpEndOfHead] &&
     byteArrayStringMatchQ[dataByteArray, StartOfString ~~ $httpMethods ~~ " /"]
 ];
@@ -225,7 +225,7 @@ Module[{request, headByteArray, head, headers, body, bodyByteArray, encoding},
     ];
 
     (*Return: <|
-		"Metod" -> "GET" | "POST" | ..,
+        "Metod" -> "GET" | "POST" | ..,
         "Path" -> "/path/to/resource",
         "Query" -> <|"key1" -> "value1"|>,
         "Version" -> "1.1",
@@ -234,7 +234,7 @@ Module[{request, headByteArray, head, headers, body, bodyByteArray, encoding},
         "BodyBytes" :> Normal[ByteArray[{}]],
         "Body" :> ByteArrayToString[ByteArray[{}], "UTF-8"],
         "Data" :> expr[..]
-	|>*)
+    |>*)
     request
 ];
 
