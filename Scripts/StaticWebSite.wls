@@ -26,37 +26,29 @@ Map[PacletDirectoryLoad, pacletDirectories];
 
 Get["WLJS`CSockets`"];
 Get["WLJS`HTTP`"];
-Get["WLJS`Internal`"];
 Get["WLJS`Objects`"];
 
 
 (*low level API*)
 
+
 server = CSocketOpen[8080];
-
-
-handler = CSocketHandler[]
-
-
-handler["DefaultHandler"] = Function[
-    Echo[#Data];
-    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nWLJS Server."
-];
-
-
-(*http level API*)
 
 
 http = HTTPHandler[];
 
 
-http["MessageHandler", "GETFILE"] = GetFileRequestQ["html"] -> ImportFile;
+handler = CSocketHandler[
+    "Received" -> <|"HTTP" -> HTTPPacketQ -> http|>,
+    "Accumulator" -> <|"HTTP" -> HTTPPacketQ -> HTTPPacketLength|>
+];
 
 
-(*entry point*)
+http["MessageHandler", "GETFILE"] =
+    Function[True] -> Function["HTTP/1.1 200 OK\r\nContent-Legnth: 4\r\n\r\nWLJS"];
 
 
-SocketListen[server, handler];
+SocketListen[server, (Echo[#Data]; handler[#])&];
 
 
 While[True,

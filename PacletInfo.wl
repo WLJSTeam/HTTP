@@ -15,8 +15,7 @@ PacletObject[
         "Kernel",
         "Root" -> "Kernel",
         "Context" -> {
-          {"WLJS`HTTP`", "HTTP.wl"},
-          {"WLJS`HTTP`Handler`", "Handler.wl"}
+          {"WLJS`HTTP`", "HTTP.wl"}
         },
         "Symbols" -> {}
       },
