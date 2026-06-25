@@ -58,11 +58,15 @@ HTTPHandler::usage =
 
 
 HTTPGETFileQ::usage =
-"HTTPGETFileQ[{ext}][request] check is /path/to/file.ext";
+"HTTPGETFileQ[request, {ext}] check is /path/to/file.ext";
 
 
 HTTPGETFile::usage =
 "HTTPGETFile[request] return HTTPResponse with the file.";
+
+
+HTTPRequestMatchQ::usage =
+"HTTPRequestMatchQ[request, requestPattern]";
 
 
 (* ::Section::Closed:: *)
@@ -172,6 +176,39 @@ HTTPHandler /: AddTo[tcp_, http_HTTPHandler] := (
 );
 
 
+HTTPGETFileQ[request_Association, extensions: {__String}] :=
+With[{httpMethod = request["Method"], path = request["Path"]},
+    httpMethod === "GET" &&
+    StringMatchQ[path, __ ~~ "." ~~ extensions, IgnoreCase -> True]
+];
+
+
+HTTPGETFile[request_Association] :=
+With[{path = urlPathToFilePath[request["Path"]]},
+    <|
+        "Body" -> ReadByteArray[path],
+        "ContentType" -> (ToLowerCase[FileExtension[path]] /. $MIMETypes)
+    |>
+];
+
+
+HTTPRequestMatchQ[request_?AssociationQ, requestPattern_?AssociationQ] :=
+With[{
+    $requestPattern =<|KeyValueMap[ToLowerCase[#] -> #2&, requestPattern]|>,
+    $request = <|KeyValueMap[ToLowerCase[#] -> #2&, request]|>
+},
+    SubsetQ[Keys[$request], Keys[$requestPattern]] &&
+    And @@ Table[
+        Which[
+            StringQ[$request[k]], StringMatchQ[$request[k], $requestPattern[k]],
+            AssociationQ[$request[k]], HTTPRequestMatchQ[$request[k], $requestPattern[k]],
+            True, MatchQ[$request[k], $requestPattern[k]]
+        ],
+        {k, Keys[$requestPattern]}
+    ]
+];
+
+
 (* ::Section::Closed:: *)
 (*Internal*)
 
@@ -233,22 +270,6 @@ Module[{request, head, body, bodyByteArray, encoding},
         "Data" :> expr[..]
     |>*)
     request
-];
-
-
-HTTPGETFileQ[request_Association, extensions: {__String}] :=
-With[{httpMethod = request["Method"], path = request["Path"]},
-    httpMethod === "GET" &&
-    StringMatchQ[path, __ ~~ "." ~~ extensions, IgnoreCase -> True]
-];
-
-
-HTTPGETFile[request_Association] :=
-With[{path = urlPathToFilePath[request["Path"]]},
-    <|
-        "Body" -> ReadByteArray[path],
-        "ContentType" -> (ToLowerCase[FileExtension[path]] /. $MIMETypes)
-    |>
 ];
 
 

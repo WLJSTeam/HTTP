@@ -51,6 +51,17 @@ http["MessageHandler", "GETFile"] =
     HTTPGETFileQ[#, {"html", "txt", "png", "svg"}]& -> HTTPGETFile;
 
 
+http["MessageHandler", "PlotApi"] =
+    HTTPRequestMatchQ[#, <|"Path" -> "/plot", "Query" -> <|"func" -> __, "from" -> __, "to" -> __|>|>]& ->
+        Function[With[{
+            func = ToExpression @ #Query["func"],
+            from = ToExpression @ #Query["from"],
+            to = ToExpression @ #Query["to"]
+        },
+            <|"Body" -> Plot[func[x], {x, from, to}], "ContentType" -> "image/svg+xml"|>
+        ]];
+
+
 SocketListen[server, handler];
 
 
