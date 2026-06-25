@@ -44,11 +44,14 @@ handler = CSocketHandler[
 ];
 
 
-http["MessageHandler", "GETFILE"] =
-    Function[True] -> Function["HTTP/1.1 200 OK\r\nContent-Legnth: 4\r\n\r\nWLJS"];
+img = Plot[Sin[x], {x, 1, 10}];
 
 
-SocketListen[server, (Echo[#Data]; handler[#])&];
+http["MessageHandler", "GETFile"] =
+    HTTPGETFileQ[#, {"html", "txt", "png", "svg"}]& -> HTTPGETFile;
+
+
+SocketListen[server, handler];
 
 
 While[True,

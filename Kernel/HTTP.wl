@@ -57,6 +57,14 @@ HTTPHandler::usage =
 "HTTPHandler[opts] mutable type for the handling HTTP request.";
 
 
+HTTPGETFileQ::usage =
+"HTTPGETFileQ[{ext}][request] check is /path/to/file.ext";
+
+
+HTTPGETFile::usage =
+"HTTPGETFile[request] return HTTPResponse with the file.";
+
+
 (* ::Section::Closed:: *)
 (*Begin private context*)
 
@@ -69,27 +77,6 @@ Begin["`Private`"];
 
 
 HTTPPacketQ[___] := False;
-
-
-byteArrayContainsQ[byteArray_ByteArray, substring_String] :=
-StringContainsQ[ByteArrayToString[byteArray, "ISOLatin1"], substring];
-
-
-byteArrayContainsQ[byteArray_ByteArray, subbyteArray_ByteArray] :=
-byteArrayContainsQ[byteArray, ByteArrayToString[subbyteArray, "ISOLatin1"]];
-
-
-byteArrayExtractString[dataByteArray_ByteArray, separatorByteArray_ByteArray -> n_Integer] :=
-With[{
-    data = ByteArrayToString[dataByteArray, "ISOLatin1"],
-    separator = ByteArrayToString[separatorByteArray, "ISOLatin1"]
-},
-    StringExtract[data, separator -> n]
-];
-
-
-byteArrayStringMatchQ[byteArray_ByteArray, substring_] :=
-StringMatchQ[ByteArrayToString[byteArray, "ISOLatin1"], substring, IgnoreCase -> True];
 
 
 HTTPPacketQ[packet_Association?AssociationQ] /; KeyExistsQ[packet, "DataByteArray"] :=
@@ -156,17 +143,20 @@ With[{dataByteArray = packet["DataByteArray"]},
         (*Request: _Association*)
         request = parseRequest[dataByteArray, deserializer, defaultDeserializer];
 
-        (*Result: _String | _Association*)
-        result = ConditionApply[messageHandler, defaultMessageHandler][request];
+        Echo[request, "REQUEST: "];
+
+        (*Result: _String | Association[] | ByteArray[] *)
+        result = conditionApply[messageHandler, defaultMessageHandler][request];
+
+        Echo[result, "RESULT: "];
 
         (*Result: HTTPResponse[]*)
         response = createResponse[result, serializer, defaultSerializer];
 
-        (*Return: _String | ByteArray[]*)
-        Which[
-            StringQ @ response["Body"], ExportString[response, "HTTPResponse", CharacterEncoding -> "UTF-8"],
-            True, ExportByteArray[response, "HTTPResponse", CharacterEncoding -> "UTF-8"]
-        ]
+        Echo[response, "RESPONSE: "];
+
+        (*Return*)
+        ExportByteArray[response, "HTTPResponse"]
     ]
 ];
 
@@ -242,8 +232,49 @@ Module[{request, head, body, bodyByteArray, encoding},
         "Body" :> ByteArrayToString[ByteArray[{}], "UTF-8"],
         "Data" :> expr[..]
     |>*)
-    Echo @ request
+    request
 ];
+
+
+HTTPGETFileQ[request_Association, extensions: {__String}] :=
+With[{httpMethod = request["Method"], path = request["Path"]},
+    httpMethod === "GET" &&
+    StringMatchQ[path, __ ~~ "." ~~ extensions, IgnoreCase -> True]
+];
+
+
+HTTPGETFile[request_Association] :=
+With[{path = urlPathToFilePath[request["Path"]]},
+    <|
+        "Body" -> ReadByteArray[path],
+        "ContentType" -> (ToLowerCase[FileExtension[path]] /. $MIMETypes)
+    |>
+];
+
+
+urlPathToFilePath[path_String] :=
+FileNameJoin[StringSplit[StringTrim[path, "/"], "/"]];
+
+
+byteArrayContainsQ[byteArray_ByteArray, substring_String] :=
+StringContainsQ[ByteArrayToString[byteArray, "ISOLatin1"], substring];
+
+
+byteArrayContainsQ[byteArray_ByteArray, subbyteArray_ByteArray] :=
+byteArrayContainsQ[byteArray, ByteArrayToString[subbyteArray, "ISOLatin1"]];
+
+
+byteArrayExtractString[dataByteArray_ByteArray, separatorByteArray_ByteArray -> n_Integer] :=
+With[{
+    data = ByteArrayToString[dataByteArray, "ISOLatin1"],
+    separator = ByteArrayToString[separatorByteArray, "ISOLatin1"]
+},
+    StringExtract[data, separator -> n]
+];
+
+
+byteArrayStringMatchQ[byteArray_ByteArray, substring_] :=
+StringMatchQ[ByteArrayToString[byteArray, "ISOLatin1"], substring, IgnoreCase -> True];
 
 
 conditionApply[conditionAndFunctions: _?AssociationQ: <||>, defalut_: Function[Null], ___] :=
@@ -268,51 +299,8 @@ If[StringContainsQ[contentType, "charset="],
 
 
 getContentType[request_Association] :=
-First @ KeySelect[request["Headers"], StringMatchQ[#, "content-type", IgnoreCase -> True]&];
-
-
-$charsetToEncoding = <|
-    "utf-8" -> "UTF-8",
-    "utf8" -> "UTF8",
-    "iso-8859-1" -> "ISO8859-1",
-    "iso-8859-2" -> "ISO8859-2",
-    "iso-8859-3" -> "ISO8859-3",
-    "iso-8859-4" -> "ISO8859-4",
-    "iso-8859-5" -> "ISO8859-5",
-    "iso-8859-6" -> "ISO8859-6",
-    "iso-8859-7" -> "ISO8859-7",
-    "iso-8859-8" -> "ISO8859-8",
-    "iso-8859-9" -> "ISO8859-9",
-    "iso-8859-10" -> "ISO8859-10",
-    "iso-8859-11" -> "ISO8859-11",
-    "iso-8859-13" -> "ISO8859-13",
-    "iso-8859-14" -> "ISO8859-14",
-    "iso-8859-15" -> "ISO8859-15",
-    "iso-8859-16" -> "ISO8859-16",
-    "windows-1251" -> "WindowsCyrillic",
-    "windows-1252" -> "WindowsANSI",
-    "windows-1250" -> "WindowsEastEurope",
-    "windows-1253" -> "WindowsGreek",
-    "windows-1254" -> "WindowsTurkish",
-    "windows-1255" -> "MacintoshHebrew",
-    "windows-1256" -> "MacintoshArabic",
-    "windows-1257" -> "WindowsBaltic",
-    "windows-874" -> "WindowsThai",
-    "us-ascii" -> "ASCII",
-    "ascii" -> "PrintableASCII",
-    "cp850" -> "IBM-850",
-    "cp437" -> "PrintableASCII",
-    "cp936" -> "CP936",
-    "cp949" -> "CP949",
-    "cp950" -> "CP950",
-    "koi8-r" -> "koi8-r",
-    "euc-jp" -> "EUC-JP",
-    "euc-kr" -> "EUC",
-    "shift_jis" -> "ShiftJIS",
-    "macroman" -> "MacintoshRoman",
-    "big5" -> "MacintoshChineseTraditional",
-    "gb2312" -> "MacintoshChineseSimplified"
-|>;
+If[Length[#] > 0, #[[1]], "utf-8"]& @
+KeySelect[request["Headers"], StringMatchQ[#, "content-type", IgnoreCase -> True]&];
 
 
 getContentLength[data_] :=
@@ -332,15 +320,15 @@ Which[
 
 
 createResponse[assoc_Association, serializer_, defaultSerializer_] :=
-Module[{data, body, headers, metadata},
-    data = ConditionApply[serializer, defaultSerializer][assoc];
+Module[{data, body, metadata},
+    data = conditionApply[serializer, defaultSerializer][assoc["Body"]];
 
     metadata = <|
-        "ContentType" -> "text/html; charset=utf-8",
-        "Headers" -> <|
+        "ContentType" -> If[KeyExistsQ[assoc, "ContentType"], assoc["ContentType"], "text/html; charset=utf-8"],
+        "Headers" -> Join[<|
             "Content-Length" -> getContentLength[data]
-        |>,
-        "StatusCode" -> 200
+        |>, If[KeyExistsQ[assoc, "Headers"], assoc["Headers"], <||>]],
+        "StatusCode" -> If[KeyExistsQ[assoc, "StatusCode"], assoc["StatusCode"], 200]
     |>;
 
     If[AssociationQ[data],
@@ -390,8 +378,195 @@ ExportString[image, "SVG"];
 $serializer[text_String] :=
 text;
 
+
 $serializer[bytes_ByteArray] :=
 bytes;
+
+
+$MIMETypes = <|
+    "ai" -> "application/postscript",
+    "aif" -> "audio/x-aiff",
+    "aifc" -> "audio/x-aiff",
+    "aiff" -> "audio/x-aiff",
+    "asc" -> "text/plain",
+    "asf" -> "video/x-ms-asf",
+    "asp" -> "text/asp",
+    "asx" -> "video/x-ms-asf",
+    "au" -> "audio/basic",
+    "avi" -> "video/avi",
+    "bmp" -> "image/bmp",
+    "bsp" -> "text/html",
+    "btf" -> "image/prs.btif",
+    "btif" -> "image/prs.btif",
+    "c" -> "text/plain",
+    "cc" -> "text/plain",
+    "cgm" -> "image/cgm",
+    "cpp" -> "text/plain",
+    "css" -> "text/css",
+    "dcr" -> "application/x-director",
+    "der" -> "application/x-x509-ca-cert",
+    "doc" -> "application/msword",
+    "docm" -> "application/vnd.ms-word.document.macroenabled.12",
+    "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "dot" -> "application/msword",
+    "dotm" -> "application/vnd.ms-word.template.macroenabled.12",
+    "dotx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+    "dtd" -> "text/xml",
+    "dvi" -> "application/x-dvi",
+    "eps" -> "application/postscript",
+    "fpx" -> "image/vnd.fpx",
+    "gif" -> "image/gif",
+    "gz" -> "application/x-gzip",
+    "h" -> "text/plain",
+    "hh" -> "text/plain",
+    "hlp" -> "application/winhelp",
+    "hpp" -> "text/plain",
+    "htm" -> "text/html",
+    "html" -> "text/html",
+    "ico" -> "image/ico",
+    "ics" -> "text/calendar",
+    "ief" -> "image/ief",
+    "iges" -> "model/iges",
+    "igs" -> "model/iges",
+    "ini" -> "text/plain",
+    "jar" -> "application/java-archive",
+    "jpe" -> "image/jpeg",
+    "jpeg" -> "image/jpeg",
+    "jpg" -> "image/jpeg",
+    "js" -> "application/x-javascript",
+    "jsp" -> "text/html",
+    "latex" -> "application/x-latex",
+    "mesh" -> "model/mesh",
+    "mid" -> "audio/mid",
+    "midi" -> "audio/mid",
+    "mif" -> "application/mif",
+    "mov" -> "video/quicktime",
+    "mp3" -> "audio/mpeg",
+    "mpe" -> "video/mpeg",
+    "mpeg" -> "video/mpeg",
+    "mpf" -> "text/vnd.ms-mediapackage",
+    "mpg" -> "video/mpeg",
+    "mpp" -> "application/vnd.ms-project",
+    "mpx" -> "application/vnd.ms-project",
+    "msh" -> "model/mesh",
+    "oda" -> "application/oda",
+    "p7m" -> "application/pkcs7-mime",
+    "p7s" -> "application/pkcs7-signature",
+    "pdf" -> "application/pdf",
+    "pl" -> "application/x-perl",
+    "png" -> "image/png",
+    "potm" -> "application/vnd.ms-powerpoint.template.macroenabled.12",
+    "potx" -> "application/vnd.openxmlformats-officedocument.presentationml.template",
+    "ppa" -> "application/vnd.ms-powerpoint",
+    "ppam" -> "application/vnd.ms-powerpoint.addin.macroenabled.12",
+    "pps" -> "application/vnd.ms-powerpoint",
+    "ppsm" -> "application/vnd.ms-powerpoint.slideshow.macroenabled.12",
+    "ppsx" -> "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+    "ppt" -> "application/vnd.ms-powerpoint",
+    "pptm" -> "application/vnd.ms-powerpoint.presentation.macroenabled.12",
+    "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "ppz" -> "application/vnd.ms-powerpoint",
+    "ps" -> "application/postscript",
+    "qt" -> "video/quicktime",
+    "ra" -> "audio/x-pn-realaudio",
+    "ram" -> "audio/x-pn-realaudio",
+    "rgb" -> "image/x-rgb",
+    "rm" -> "audio/x-pn-realaudio",
+    "rtf" -> "application/rtf",
+    "rtx" -> "text/richtext",
+    "sap" -> "application/x-sapshortcut",
+    "scm" -> "application/x-screencam",
+    "silo" -> "model/mesh",
+    "sim" -> "application/vnd.sap_kw.itutor",
+    "sit" -> "application/x-stuffit",
+    "sl" -> "text/vnd.wap.sl",
+    "snd" -> "audio/basic",
+    "spl" -> "application/x-futuresplash",
+    "svg" -> "image/svg+xml",
+    "swa" -> "application/x-director",
+    "swf" -> "application/x-shockwave-flash",
+    "tar" -> "application/x-tar",
+    "tex" -> "application/x-tex",
+    "tht" -> "text/thtml",
+    "thtm" -> "text/thtml",
+    "thtml" -> "text/thtml",
+    "tif" -> "image/tiff",
+    "tiff" -> "image/tiff",
+    "tsf" -> "application/vnd.ms-excel",
+    "txt" -> "text/plain",
+    "vcf" -> "text/x-vcard",
+    "vcs" -> "text/x-vcalendar",
+    "vdo" -> "video/vdo",
+    "viv" -> "video/vnd.vivo",
+    "vrml" -> "model/vrml",
+    "vsd" -> "application/vnd.visio",
+    "wav" -> "audio/x-wav",
+    "wbmp" -> "text/vnd.wap.wbmp",
+    "wmf" -> "application/x-msmetafile",
+    "wml" -> "text/vnd.wap.wml",
+    "wmls" -> "text/vnd.wap.wmlscript",
+    "wp5" -> "application/wordperfect5.1",
+    "wrl" -> "model/vrml",
+    "xap" -> "application/x-silverlight-app",
+    "xbm" -> "image/x-xbitmap",
+    "xif" -> "image/vnd.xiff",
+    "xlam" -> "application/vnd.ms-excel.addin.macroenabled.12",
+    "xls" -> "application/vnd.ms-excel",
+    "xlsb" -> "application/vnd.ms-excel.sheet.binary.macroenabled.12",
+    "xlsm" -> "application/vnd.ms-excel.sheet.macroenabled.12",
+    "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xltm" -> "application/vnd.ms-excel.template.macroenabled.12",
+    "xltx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+    "xml" -> "text/xml",
+    "xsd" -> "text/xml",
+    "xsl" -> "text/xml",
+    "zip" -> "application/x-zip-compressed",
+    "wsp" -> "text/html"
+|>;
+
+
+$charsetToEncoding = <|
+    "utf-8" -> "UTF-8",
+    "utf8" -> "UTF8",
+    "iso-8859-1" -> "ISO8859-1",
+    "iso-8859-2" -> "ISO8859-2",
+    "iso-8859-3" -> "ISO8859-3",
+    "iso-8859-4" -> "ISO8859-4",
+    "iso-8859-5" -> "ISO8859-5",
+    "iso-8859-6" -> "ISO8859-6",
+    "iso-8859-7" -> "ISO8859-7",
+    "iso-8859-8" -> "ISO8859-8",
+    "iso-8859-9" -> "ISO8859-9",
+    "iso-8859-10" -> "ISO8859-10",
+    "iso-8859-11" -> "ISO8859-11",
+    "iso-8859-13" -> "ISO8859-13",
+    "iso-8859-14" -> "ISO8859-14",
+    "iso-8859-15" -> "ISO8859-15",
+    "iso-8859-16" -> "ISO8859-16",
+    "windows-1251" -> "WindowsCyrillic",
+    "windows-1252" -> "WindowsANSI",
+    "windows-1250" -> "WindowsEastEurope",
+    "windows-1253" -> "WindowsGreek",
+    "windows-1254" -> "WindowsTurkish",
+    "windows-1255" -> "MacintoshHebrew",
+    "windows-1256" -> "MacintoshArabic",
+    "windows-1257" -> "WindowsBaltic",
+    "windows-874" -> "WindowsThai",
+    "us-ascii" -> "ASCII",
+    "ascii" -> "PrintableASCII",
+    "cp850" -> "IBM-850",
+    "cp437" -> "PrintableASCII",
+    "cp936" -> "CP936",
+    "cp949" -> "CP949",
+    "cp950" -> "CP950",
+    "koi8-r" -> "koi8-r",
+    "euc-jp" -> "EUC-JP",
+    "euc-kr" -> "EUC",
+    "shift_jis" -> "ShiftJIS",
+    "macroman" -> "MacintoshRoman",
+    "big5" -> "MacintoshChineseTraditional",
+    "gb2312" -> "MacintoshChineseSimplified"
+|>;
 
 
 (* ::Section::Closed:: *)
