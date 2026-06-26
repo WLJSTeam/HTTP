@@ -1,9 +1,5 @@
 (* ::Package:: *)
 
-(* ::Chapter:: *)
-(*HTTP*)
-
-
 (*
     message - ByteArray passed from client side
     request - Association parsed from message
@@ -29,17 +25,9 @@
 (*+-----------------------------------------------+*)
 
 
-(* ::Section:: *)
-(*Begin packge*)
-
-
 BeginPackage["WLJS`HTTP`", {
     "WLJS`Objects`"
 }];
-
-
-(* ::Section::Closed:: *)
-(*Names*)
 
 
 ClearAll["`*"];
@@ -69,15 +57,15 @@ HTTPRequestMatchQ::usage =
 "HTTPRequestMatchQ[request, requestPattern]";
 
 
-(* ::Section::Closed:: *)
-(*Begin private context*)
+HTTPGETQ::usage =
+"HTTPGETQ[request, pathPattern]";
+
+
+HTTPRegisterMimeType::usage =
+"HTTPRegisterMimeType[type, mime]";
 
 
 Begin["`Private`"];
-
-
-(* ::Section::Closed:: *)
-(*HTTPPacketQ*)
 
 
 HTTPPacketQ[___] := False;
@@ -88,10 +76,6 @@ With[{dataByteArray = packet["DataByteArray"]},
     byteArrayContainsQ[dataByteArray, $httpEndOfHead] &&
     byteArrayStringMatchQ[dataByteArray, StartOfString ~~ $httpMethods ~~ " /" ~~ __]
 ];
-
-
-(* ::Section::Closed:: *)
-(*HTTPPacketLength*)
 
 
 HTTPPacketLength[packet_Association] :=
@@ -109,14 +93,6 @@ With[{dataByteArray = packet["DataByteArray"]},
         ]
     ]
 ];
-
-
-(* ::Section:: *)
-(*HTTPHandler*)
-
-
-(* ::Section::Closed:: *)
-(*Default message handler*)
 
 
 CreateType[HTTPHandler, {
@@ -165,15 +141,36 @@ With[{dataByteArray = packet["DataByteArray"]},
 ];
 
 
-(* ::Section::Closed:: *)
-(*Add HTTPHandler*)
+HTTPHandler /: AddTo[service_, http_HTTPHandler] :=
+With[{$service = service},
+    $service["Accumulator"] = If[AssociationQ[$service["Accumulator"]],
+        Join[$service["Accumulator"], <|"HTTP" -> HTTPPacketQ -> HTTPPacketLength|>],
+    (*Else*)
+        <|
+            "HTTP" -> HTTPPacketQ -> HTTPPacketLength,
+            "" -> Function[True] -> $service["Accumulator"]
+        |>
+    ];
 
+    If[KeyExistsQ[$service["Accumulator"], ""],
+        $service["Accumulator"] = Append[$service["Accumulator"], "" -> $service["Accumulator", ""]]
+    ];
 
-HTTPHandler /: AddTo[tcp_, http_HTTPHandler] := (
-    tcp["CompleteHandler", "HTTP"] = HTTPPacketQ -> HTTPPacketLength;
-    tcp["MessageHandler", "HTTP"] = HTTPPacketQ -> http;
-    tcp
-);
+    $service["Received"] = If[AssociationQ[$service["Received"]],
+        Join[$service["Received"], <|"HTTP" -> HTTPPacketQ -> http|>],
+    (*Else*)
+        <|
+            "HTTP" -> HTTPPacketQ -> http,
+            "" -> Function[True] -> $service["Received"]
+        |>
+    ];
+
+    If[KeyExistsQ[$service["Received"], ""],
+        $service["Received"] = Append[$service["Received"], "" -> $service["Received", ""]]
+    ];
+
+    $service
+];
 
 
 HTTPGETFileQ[request_Association, extensions: {__String}] :=
@@ -209,8 +206,8 @@ With[{
 ];
 
 
-(* ::Section::Closed:: *)
-(*Internal*)
+HTTPRegisterMimeType[type_String, mime_String] :=
+$MIMETypes[type] = mime;
 
 
 $httpMethods = {"GET", "PUT", "DELETE", "HEAD", "POST", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
@@ -442,8 +439,8 @@ $MIMETypes = <|
     "hh" -> "text/plain",
     "hlp" -> "application/winhelp",
     "hpp" -> "text/plain",
-    "htm" -> "text/html",
-    "html" -> "text/html",
+    "htm" -> "text/html; charset=utf-8",
+    "html" -> "text/html; charset=utf-8",
     "ico" -> "image/ico",
     "ics" -> "text/calendar",
     "ief" -> "image/ief",

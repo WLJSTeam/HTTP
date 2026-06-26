@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test server</title>
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: Arial, sans-serif;
+                background: #f0f2f5;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .container {
+                background: white;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                max-width: 500px;
+            }
+
+            h1 {
+                color: #1a73e8;
+                margin-bottom: 20px;
+            }
+
+            #counter {
+                font-size: 48px;
+                font-weight: bold;
+                color: #333;
+                margin: 20px 0;
+            }
+
+            button {
+                background: #1a73e8;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background 0.3s;
+            }
+
+            button:hover {
+                background: #1557b0;
+            }
+
+            #status {
+                margin-top: 20px;
+                color: #666;
+                font-size: 14px;
+            }
+
+            img {
+                margin-top: 20px;
+                max-width: 100%;
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>🚀 Hello from Wolfram!</h1>
+
+            <div id="counter">0</div>
+
+            <button onclick="increment()">Click me!</button>
+
+            <div id="status">Works</div>
+
+            <img src="file.png" alt="Test PNG" id="testImage">
+        </div>
+
+        <script>
+            let count = 0;
+
+            function increment() {
+                count++;
+                document.getElementById('counter').textContent = count;
+                document.getElementById('status').textContent = 'Clicked: ' + count + ' times';
+
+                fetch('/api/count')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Server response:', data);
+                    })
+                    .catch(err => {
+                        console.log('Error:', err);
+                    });
+            }
+
+            document.getElementById('testImage').addEventListener('load', function() {
+                console.log('✅ PNG loaded');
+                document.getElementById('status').textContent = 'PNG loaded ✅';
+            });
+
+            document.getElementById('testImage').addEventListener('error', function() {
+                console.log('❌ Error during PNG loading');
+                document.getElementById('status').textContent = 'Error PNG ❌';
+            });
+
+            console.log('✅ Page loaded');
+        </script>
+    </body>
+</html>

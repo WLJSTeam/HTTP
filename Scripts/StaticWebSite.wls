@@ -1,13 +1,14 @@
 (* :Package: *)
 
-
 (*```
     cd ~/Projects
     git clone https://github.com/WLJSTeam/Objects.git
-    git clone https://github.com/WLJSTeam/Internal.git
     git clone https://github.com/WLJSTeam/HTTP.git
     git clone https://github.com/WLJSTeam/CSockets.git
 ```*)
+
+
+SetDirectory[FileNameJoin[{DirectoryName[$InputFileName], "StaticWebSite"}]];
 
 
 projectsDirectory = FileNameJoin[{$HomeDirectory, "Projects"}];
@@ -15,7 +16,6 @@ projectsDirectory = FileNameJoin[{$HomeDirectory, "Projects"}];
 
 pacletDirectories = Map[FileNameJoin[{projectsDirectory, #}]&] @ {
     "Objects",
-    "Internal",
     "HTTP",
     "CSockets"
 };
@@ -25,41 +25,37 @@ Map[PacletDirectoryLoad, pacletDirectories];
 
 
 Get["WLJS`CSockets`"];
-Get["WLJS`HTTP`"];
 Get["WLJS`Objects`"];
-
-
-(*low level API*)
+Get["WLJS`HTTP`"];
 
 
 server = CSocketOpen[8080];
 
 
+handler = CSocketHandler[];
+
+
 http = HTTPHandler[];
 
 
-handler = CSocketHandler[
-    "Received" -> <|"HTTP" -> HTTPPacketQ -> http|>,
-    "Accumulator" -> <|"HTTP" -> HTTPPacketQ -> HTTPPacketLength|>
-];
-
-
-img = Plot[Sin[x], {x, 1, 10}];
+handler += http;
 
 
 http["MessageHandler", "GETFile"] =
-    HTTPGETFileQ[#, {"html", "txt", "png", "svg"}]& -> HTTPGETFile;
+    HTTPGETFileQ[#, {"html", "txt", "png", "svg", "js", "css"}]& -> HTTPGETFile;
 
 
-http["MessageHandler", "PlotApi"] =
-    HTTPRequestMatchQ[#, <|"Path" -> "/plot", "Query" -> <|"func" -> __, "from" -> __, "to" -> __|>|>]& ->
-        Function[With[{
-            func = ToExpression @ #Query["func"],
-            from = ToExpression @ #Query["from"],
-            to = ToExpression @ #Query["to"]
-        },
-            <|"Body" -> Plot[func[x], {x, from, to}], "ContentType" -> "image/svg+xml"|>
-        ]];
+http["MessageHandler", "APICount"] =
+    HTTPRequestMatchQ[#, <|"Path" -> "/api/" ~~ __|>]& -> Function[<|
+        "Body" -> ToExpression[Last[StringSplit[#Path, "/"]]][#Query],
+        "ContentType" -> "application/json"
+    |>];
+
+
+$count = 0;
+
+
+count[_] := Echo[$count++, "COUNT: "];
 
 
 SocketListen[server, handler];
