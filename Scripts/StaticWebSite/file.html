@@ -68,6 +68,60 @@
                 max-width: 100%;
                 border-radius: 8px;
             }
+
+            /* Стили для формы */
+            .upload-form {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 2px solid #eee;
+            }
+
+            .upload-form h3 {
+                color: #333;
+                margin-bottom: 15px;
+            }
+
+            /* Стилизованная кнопка выбора файла */
+            .file-label {
+                display: inline-block;
+                background: #1a73e8;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: background 0.3s;
+            }
+
+            .file-label:hover {
+                background: #1557b0;
+            }
+
+            .file-label input[type="file"] {
+                display: none;
+            }
+
+            #fileName {
+                margin-left: 10px;
+                color: #666;
+                font-size: 14px;
+            }
+
+            .upload-form input[type="submit"] {
+                background: #34a853;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 6px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background 0.3s;
+                margin-top: 5px;
+            }
+
+            .upload-form input[type="submit"]:hover {
+                background: #2d9249;
+            }
         </style>
     </head>
 
@@ -82,6 +136,19 @@
             <div id="status">Works</div>
 
             <img src="file.png" alt="Test PNG" id="testImage">
+
+            <div class="upload-form">
+                <h3>📤 Upload file</h3>
+                <form action="/upload" method="post" enctype="multipart/form-data">
+                    <label class="file-label" for="fileInput">
+                        <span>📁 Attach file</span>
+                        <input type="file" id="fileInput" name="file" required onchange="updateFileName(this)">
+                    </label>
+                    <span id="fileName">No file</span>
+                    <br><br>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
         </div>
 
         <script>
@@ -113,6 +180,15 @@
             });
 
             console.log('✅ Page loaded');
+
+            function updateFileName(input) {
+                const fileName = document.getElementById('fileName');
+                if (input.files && input.files.length > 0) {
+                    fileName.textContent = '📎 ' + input.files[0].name;
+                } else {
+                    fileName.textContent = 'No file';
+                }
+            }
         </script>
     </body>
 </html>
