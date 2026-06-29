@@ -32,6 +32,9 @@ Get["WLJS`HTTP`"];
 server = CSocketOpen[8080];
 
 
+server2 = CSocketOpen[8081];
+
+
 handler = CSocketHandler[];
 
 
@@ -58,7 +61,7 @@ $count = 0;
 count[_] := Echo[$count++, "COUNT: "];
 
 
-SocketListen[server, handler];
+SocketListen[CSocketList[{server, server2}], handler];
 
 
 While[True,

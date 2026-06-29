@@ -220,9 +220,26 @@ $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
 parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
-Module[{request, head, body, bodyByteArray, encoding},
+Module[{request, head, headline, headers, body, encoding},
+    request = <|
+        "DataByteArray" -> dataByteArray,
+        "Metod" -> Null,
+        "Path" -> Null,
+        "Query" -> <||>,
+        "Version" -> Null,
+        "Headers" -> <||>,
+        "ContentType" -> Null,
+        "ContentEncoding" -> Null,
+        "BodyByteArray" :> Null,
+        "BodyBytes" :> Null,
+        "BodyString" :> Null,
+        "Body" :> Null
+    |>;
+
     head = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 1];
-    body = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 2];
+
+    headline = StringExtract[head, "\r\n" -> 1];
+    headers = StringExtract[head, "\r\n" -> 2];
 
     request = First @ StringCases[
         StringExtract[head, "\r\n" -> 1],
@@ -255,17 +272,6 @@ Module[{request, head, body, bodyByteArray, encoding},
         request["Data"] := $data;
     ];
 
-    (*Return: <|
-        "Metod" -> "GET" | "POST" | ..,
-        "Path" -> "/path/to/resource",
-        "Query" -> <|"key1" -> "value1"|>,
-        "Version" -> "1.1",
-        "Headers" -> <|"Connection" -> "keep-alive"|>,
-        "BodyByteArray" :> ByteArray[{}],
-        "BodyBytes" :> Normal[ByteArray[{}]],
-        "Body" :> ByteArrayToString[ByteArray[{}], "UTF-8"],
-        "Data" :> expr[..]
-    |>*)
     request
 ];
 
