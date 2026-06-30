@@ -17,13 +17,15 @@ projectsDirectory = FileNameJoin[{$HomeDirectory, "Projects"}];
 pacletDirectories = Map[FileNameJoin[{projectsDirectory, #}]&] @ {
     "Objects",
     "HTTP",
-    "CSockets"
+    "CSockets",
+    "Internal"
 };
 
 
 Map[PacletDirectoryLoad, pacletDirectories];
 
 
+Get["WLJS`Internal`Console`"];
 Get["WLJS`CSockets`"];
 Get["WLJS`Objects`"];
 Get["WLJS`HTTP`"];

@@ -26,7 +26,8 @@
 
 
 BeginPackage["WLJS`HTTP`", {
-    "WLJS`Objects`"
+    "WLJS`Objects`",
+    "WLJS`Internal`Console`"
 }];
 
 
@@ -81,13 +82,13 @@ With[{dataByteArray = packet["DataByteArray"]},
 HTTPPacketLength[packet_Association] :=
 With[{dataByteArray = packet["DataByteArray"]},
     Module[{head},
-        head = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 1];
+        head = ByteArrayToString[byteArrayExtract[dataByteArray, $httpEndOfHead -> 1]];
 
         (*Return: _Integer*)
         Which[
             StringContainsQ[head, "Content-Length: ", IgnoreCase -> True],
                 StringLength[head] + 4 +
-                ToExpression[StringTrim[StringExtract[ToLowerCase[head], "content-length: " -> 2, "\r\n" -> 1]]],
+                ToExpression[StringTrim[StringExtract[ToLowerCase[head], "content-length: " -> 2, $httpEndOfHeader -> 1]]],
             True,
                 Length[dataByteArray]
         ]
@@ -123,17 +124,17 @@ With[{dataByteArray = packet["DataByteArray"]},
         (*Request: _Association*)
         request = parseRequest[dataByteArray, deserializer, defaultDeserializer];
 
-        Echo[request, "REQUEST: "];
+        ConsoleEcho["REQUEST"][request];
 
         (*Result: _String | Association[] | ByteArray[] *)
         result = conditionApply[messageHandler, defaultMessageHandler][request];
 
-        Echo[result, "RESULT: "];
+        ConsoleEcho["RESULT"][result];
 
         (*Result: HTTPResponse[]*)
         response = createResponse[result, serializer, defaultSerializer];
 
-        Echo[response, "RESPONSE: "];
+        ConsoleEcho["RESPONSE"][response];
 
         (*Return*)
         ExportByteArray[response, "HTTPResponse"]
@@ -213,14 +214,17 @@ $MIMETypes[type] = mime;
 $httpMethods = {"GET", "PUT", "DELETE", "HEAD", "POST", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
 
 
-$httpEndOfHead = StringToByteArray["\r\n\r\n"];
+$httpEndOfHead = {"\r\n\r\n", "\n\n"};
+
+
+$httpEndOfHeader = {"\r\n", "\n"};
 
 
 $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
 parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
-Module[{request, head, headline, headers, body, encoding},
+Module[{request, head, headline, method, url, version, headers, body, encoding},
     request = <|
         "DataByteArray" -> dataByteArray,
         "Metod" -> Null,
@@ -236,24 +240,20 @@ Module[{request, head, headline, headers, body, encoding},
         "Body" :> Null
     |>;
 
-    head = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 1];
+    head = ByteArrayToString[byteArrayExtract[dataByteArray, $httpEndOfHead -> 1]];
+    body = byteArrayExtract[dataByteArray, $httpEndOfHead -> 2];
 
-    headline = StringExtract[head, "\r\n" -> 1];
-    headers = StringExtract[head, "\r\n" -> 2];
+    headline = StringExtract[head, $httpEndOfHeader -> 1];
+    headers = StringExtract[head, $httpEndOfHeader -> 2];
 
-    request = First @ StringCases[
-        StringExtract[head, "\r\n" -> 1],
-        method__ ~~ " " ~~ url__ ~~ " " ~~ version__ :> Join[
-            <|"Method" -> method|>,
-
-            MapAt[Association, Key["Query"]] @
-            MapAt[URLBuild, Key["Path"]] @
-            <|URLParse[url]|>[[{"Path", "Query"}]],
-
-            <|"Version" -> version|>
-        ],
-        IgnoreCase -> True
+    {method, url, version} = First @ StringCases[headline,
+        $method__ ~~ " " ~~ $url__ ~~ " " ~~ $version__ :> {$method, URLParse[$url], $version}
     ];
+
+    request["Method"] = method;
+    request["Version"] = version;
+    request["Path"] = StringRiffle[url["Path"], "/"];
+    request["Query"] = Map[If[Length[#] > 1, #[[All, -1]], #[[1, -1]]] &] @ GroupBy[First] @ url["Query"];
 
     request["Headers"] = Association[
         Map[Rule[#1, StringRiffle[{##2}, ":"]]& @@ Map[StringTrim]@StringSplit[#, ":"] &]@
@@ -280,7 +280,7 @@ urlPathToFilePath[path_String] :=
 FileNameJoin[StringSplit[StringTrim[path, "/"], "/"]];
 
 
-byteArrayContainsQ[byteArray_ByteArray, substring_String] :=
+byteArrayContainsQ[byteArray_ByteArray, substring_] :=
 StringContainsQ[ByteArrayToString[byteArray, "ISOLatin1"], substring];
 
 
@@ -288,12 +288,11 @@ byteArrayContainsQ[byteArray_ByteArray, subbyteArray_ByteArray] :=
 byteArrayContainsQ[byteArray, ByteArrayToString[subbyteArray, "ISOLatin1"]];
 
 
-byteArrayExtractString[dataByteArray_ByteArray, separatorByteArray_ByteArray -> n_Integer] :=
+byteArrayExtract[dataByteArray_ByteArray, separator_ -> n_Integer] :=
 With[{
-    data = ByteArrayToString[dataByteArray, "ISOLatin1"],
-    separator = ByteArrayToString[separatorByteArray, "ISOLatin1"]
+    data = ByteArrayToString[dataByteArray, "ISOLatin1"]
 },
-    StringExtract[data, separator -> n]
+    StringToByteArray[StringExtract[data, separator -> n]]
 ];
 
 
@@ -369,10 +368,6 @@ Module[{data, body, metadata},
     (*Return: HTTPResponse[]*)
     HTTPResponse[body, metadata]
 ];
-
-
-(* ::Section::Closed:: *)
-(*Serialization*)
 
 
 $deserializer[request_Association?AssociationQ] :=
