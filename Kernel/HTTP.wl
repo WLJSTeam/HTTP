@@ -227,7 +227,7 @@ parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
 Module[{request, head, headline, method, url, version, headers, body, encoding},
     request = <|
         "DataByteArray" -> dataByteArray,
-        "Metod" -> Null,
+        "Method" -> Null,
         "Path" -> Null,
         "Query" -> <||>,
         "Version" -> Null,
@@ -269,7 +269,7 @@ Module[{request, head, headline, method, url, version, headers, body, encoding},
     ];
 
     With[{$data = conditionApply[deserializer, defaultDeserializer][request]},
-        request["Data"] := $data;
+        request["Content"] := $data;
     ];
 
     request
@@ -588,15 +588,7 @@ $charsetToEncoding = <|
 |>;
 
 
-(* ::Section::Closed:: *)
-(*End private context*)
-
-
 End[(*`Private`*)];
-
-
-(* ::Section::Closed:: *)
-(*End packet*)
 
 
 EndPackage[(*Kirill`HTTP`*)];
