@@ -224,7 +224,7 @@ $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
 parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
-Module[{request, head, headline, method, url, version, headers, body, encoding},
+Module[{request, head, headLength, bodyPosition, headline, method, url, version, headers, body, encoding},
     request = <|
         "DataByteArray" -> dataByteArray,
         "Method" -> Null,
@@ -234,14 +234,19 @@ Module[{request, head, headline, method, url, version, headers, body, encoding},
         "Headers" -> <||>,
         "ContentType" -> Null,
         "ContentEncoding" -> Null,
+        "ContentCharset" -> Null,
+        "TransferEncoding" -> Null,
         "BodyByteArray" :> Null,
         "BodyBytes" :> Null,
-        "BodyString" :> Null,
-        "Body" :> Null
+        "Body" :> Null,
+        "Content" :> Null
     |>;
 
-    head = ByteArrayToString[byteArrayExtract[dataByteArray, $httpEndOfHead -> 1]];
-    body = byteArrayExtract[dataByteArray, $httpEndOfHead -> 2];
+    head = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 1];
+    headLength = StringLength[head];
+
+    bodyPosition = If[dataByteArray[[headLength + 1]] == 13, headLength + 5, headLength + 3];
+    bodyByteArray = dataByteArray[[bodyPosition ;; ]];
 
     headline = StringExtract[head, $httpEndOfHeader -> 1];
     headers = StringExtract[head, $httpEndOfHeader -> 2];
@@ -255,10 +260,11 @@ Module[{request, head, headline, method, url, version, headers, body, encoding},
     request["Path"] = StringRiffle[url["Path"], "/"];
     request["Query"] = Map[If[Length[#] > 1, #[[All, -1]], #[[1, -1]]] &] @ GroupBy[First] @ url["Query"];
 
-    request["Headers"] = Association[
-        Map[Rule[#1, StringRiffle[{##2}, ":"]]& @@ Map[StringTrim]@StringSplit[#, ":"] &]@
-        StringExtract[head, "\r\n\r\n" -> 1, "\r\n" -> 2 ;; ]
-    ];
+    request["Headers"] =
+        Association @
+        Map[StringTrim[#[[1]]] -> StringTrim[StringRiffle[#[[2 ;; ]], ":"]]&] @
+        Map[StringSplit[#, ":" ]&] @
+        StringSplit[headers, $httpEndOfHeader];
 
     encoding = getCharsetEncoding[getContentType[request]];
 
@@ -293,6 +299,14 @@ With[{
     data = ByteArrayToString[dataByteArray, "ISOLatin1"]
 },
     StringToByteArray[StringExtract[data, separator -> n]]
+];
+
+
+byteArrayExtractString[dataByteArray_ByteArray, separator_ -> n_Integer] :=
+With[{
+    data = ByteArrayToString[dataByteArray, "ISOLatin1"]
+},
+    StringExtract[data, separator -> n]
 ];
 
 
