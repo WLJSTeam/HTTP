@@ -224,7 +224,9 @@ $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
 parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
-Module[{request, head, headLength, bodyPosition, headline, method, url, version, headers, body, encoding},
+Module[{request, head, headLength, bodyPosition, bodyByteArray,
+    headline, method, url, version, headers, body, encoding},
+
     request = <|
         "DataByteArray" -> dataByteArray,
         "Method" -> Null,
