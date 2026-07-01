@@ -370,8 +370,16 @@ Module[{data, body, metadata},
 ];
 
 
-$deserializer[request_Association?AssociationQ] :=
-request["Body"];
+deserializerRequest[request_Association?AssociationQ] :=
+deserializerRequest[request["ContentEncoding"], request["ContentType"], request["BodyByteArray"]];
+
+
+deserializerRequest[contentEncoding_, contentType_, bodyByteArray_, bodyString_] :=
+With[{body = decodeBody[bodyByteArray, contentEncoding]},
+    Switch[contentType,
+        "application/json", ImportString[]
+    ]
+]
 
 
 $serializer[expr_] :=
