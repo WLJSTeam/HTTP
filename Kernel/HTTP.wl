@@ -403,22 +403,25 @@ Which[
 
 
 deserializeRequestBody[request_Association?AssociationQ] :=
-deserializeRequestBody[request["ContentEncoding"], request["ContentType"], request["BodyByteArray"], request["Body"]];
-
-
-deserializeRequestBody[contentEncoding_, contentType_, bodyByteArray_, bodyString_] :=
-If[Length[bodyByteArray] == 0 || StringLength[bodyString] == 0,
-    Null,
-(*Else*)
-    With[{
-        $bodyByteArray = decodeBody[bodyByteArray, contentEncoding],
-        $bodyString = decodeBody[bodyString, contentEncoding]
-    },
-        Switch[contentType,
-            "application/json", ImportString[$bodyString, "RawJSON"],
-            "application/x-www-form-urlencoded", Association @ URLQueryDecode[$bodyString]
+With[{
+    contentEncoding = request["ContentEncoding"],
+    contentType = request["ContentType"],
+    bodyByteArray = request["BodyByteArray"],
+    body = request["Body"]
+},
+    If[Length[bodyByteArray] == 0 || StringLength[body] == 0,
+        Null,
+    (*Else*)
+        With[{
+            $bodyByteArray = decodeBody[bodyByteArray, contentEncoding],
+            $body = decodeBody[body, contentEncoding]
+        },
+            Switch[contentType,
+                "application/json", ImportString[$bodyString, "RawJSON"],
+                "application/x-www-form-urlencoded", Association @ URLQueryDecode[$bodyString]
+            ]
         ]
-    ]
+    ];
 ];
 
 
