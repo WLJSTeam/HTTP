@@ -269,9 +269,25 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         Map[StringSplit[#, ":" ]&] @
         headers;
 
-    encoding = getCharsetEncoding[getContentType[request]];
+    request["ContentEncoding"] =
+        If[Length[#] > 0, #[[1]], Null]& @
+        KeySelect[StringMatchQ[#, "content-encoding", IgnoreCase -> True]&] @
+        request["Headers"];
 
-    With[{$bodyByteArray = bodyByteArray, $encoding = encoding},
+    request["ContentType"] :=
+        If[Length[#] > 0, StringSplit[#[[1]], ";"][[1]], Null]& @
+        KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
+        request["Headers"];
+
+    request["ContentCharset"] =
+        If[# === Null || !StringContainsQ[#, "charset=", IgnoreCase -> True], Null,
+            StringTrim @ StringExtract[#, "charset=" -> 2, ";" -> 1]
+        ]& @
+        If[Length[#] > 0, #[[1]], Null]& @
+        KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
+        request["Headers"];
+
+    With[{$bodyByteArray = bodyByteArray, $encoding = request["ContentEncoding"]},
         request["BodyByteArray"] := $bodyByteArray;
         request["BodyBytes"] := Normal[$bodyByteArray];
         request["Body"] := ByteArrayToString[$bodyByteArray, $encoding];
