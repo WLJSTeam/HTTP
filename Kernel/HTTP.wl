@@ -100,7 +100,7 @@ CreateType[HTTPHandler, {
     "MessageHandler" -> <||>,
     "DefaultMessageHandler" -> Function[<|"Code" -> 404, "Body" -> "NotFound"|>],
     "Deserializer" -> <||>,
-    "DefaultDeserializer" -> $deserializer,
+    "DefaultDeserializer" -> deserializeRequestBody,
     "Serializer" -> <||>,
     "DefaultSerializer" -> $serializer,
     "Logger" -> None,
@@ -109,7 +109,7 @@ CreateType[HTTPHandler, {
 
 
 handler_HTTPHandler[packet_Association] :=
-With[{dataByteArray = packet["DataByteArray"]},
+With[{client = packet["SourceSocket"], dataByteArray = packet["DataByteArray"]},
     Module[{request, response, result,
         deserializer, defaultDeserializer, serializer, defaultSerializer,
         messageHandler, defaultMessageHandler
@@ -122,7 +122,7 @@ With[{dataByteArray = packet["DataByteArray"]},
         defaultMessageHandler = handler["DefaultMessageHandler"];
 
         (*Request: _Association*)
-        request = parseRequest[dataByteArray, deserializer, defaultDeserializer];
+        request = parseRequest[client, dataByteArray, deserializer, defaultDeserializer];
 
         ConsoleEcho["REQUEST"][request];
 
@@ -223,11 +223,12 @@ $httpEndOfHeader = {"\r\n", "\n"};
 $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
-parseRequest[dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
+parseRequest[client_, dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
 Module[{request, head, headLength, bodyPosition, bodyByteArray,
     headline, method, url, version, headers, body, encoding},
 
     request = <|
+        "Client" -> client,
         "DataByteArray" -> dataByteArray,
         "Method" -> Null,
         "Path" -> Null,
@@ -247,11 +248,11 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
     head = byteArrayExtractString[dataByteArray, $httpEndOfHead -> 1];
     headLength = StringLength[head];
 
+    headline = StringExtract[head, $httpEndOfHeader -> 1];
+    headers = Map[StringTrim][StringExtract[head, $httpEndOfHeader -> 2 ;; ], $httpEndOfHeader];
+
     bodyPosition = If[dataByteArray[[headLength + 1]] == 13, headLength + 5, headLength + 3];
     bodyByteArray = dataByteArray[[bodyPosition ;; ]];
-
-    headline = StringExtract[head, $httpEndOfHeader -> 1];
-    headers = StringExtract[head, $httpEndOfHeader -> 2];
 
     {method, url, version} = First @ StringCases[headline,
         $method__ ~~ " " ~~ $url__ ~~ " " ~~ $version__ :> {$method, URLParse[$url], $version}
@@ -266,11 +267,11 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         Association @
         Map[StringTrim[#[[1]]] -> StringTrim[StringRiffle[#[[2 ;; ]], ":"]]&] @
         Map[StringSplit[#, ":" ]&] @
-        StringSplit[headers, $httpEndOfHeader];
+        headers;
 
     encoding = getCharsetEncoding[getContentType[request]];
 
-    With[{$bodyByteArray = StringToByteArray[body], $encoding = encoding},
+    With[{$bodyByteArray = bodyByteArray, $encoding = encoding},
         request["BodyByteArray"] := $bodyByteArray;
         request["BodyBytes"] := Normal[$bodyByteArray];
         request["Body"] := ByteArrayToString[$bodyByteArray, $encoding];
@@ -386,16 +387,39 @@ Module[{data, body, metadata},
 ];
 
 
-deserializerRequest[request_Association?AssociationQ] :=
-deserializerRequest[request["ContentEncoding"], request["ContentType"], request["BodyByteArray"]];
+decodeBody[body_, Null] :=
+body;
 
 
-deserializerRequest[contentEncoding_, contentType_, bodyByteArray_, bodyString_] :=
-With[{body = decodeBody[bodyByteArray, contentEncoding]},
-    Switch[contentType,
-        "application/json", ImportString[]
+decodeBody[body_, contentEncoding_] :=
+Which[
+    StringQ[body] && StringMatchQ[contentEncoding, "gzip", IgnoreCase -> True],
+        ByteArrayToString[ImportByteArray[StringToByteArray[body], "GZIP"], "UTF-8"],
+    ByteArrayQ[body] && StringMatchQ[contentEncoding, "gzip", IgnoreCase -> True],
+        ImportByteArray[body, "GZIP"],
+    True,
+        body
+];
+
+
+deserializeRequestBody[request_Association?AssociationQ] :=
+deserializeRequestBody[request["ContentEncoding"], request["ContentType"], request["BodyByteArray"], request["Body"]];
+
+
+deserializeRequestBody[contentEncoding_, contentType_, bodyByteArray_, bodyString_] :=
+If[Length[bodyByteArray] == 0 || StringLength[bodyString] == 0,
+    Null,
+(*Else*)
+    With[{
+        $bodyByteArray = decodeBody[bodyByteArray, contentEncoding],
+        $bodyString = decodeBody[bodyString, contentEncoding]
+    },
+        Switch[contentType,
+            "application/json", ImportString[$bodyString, "RawJSON"],
+            "application/x-www-form-urlencoded", Association @ URLQueryDecode[$bodyString]
+        ]
     ]
-]
+];
 
 
 $serializer[expr_] :=
