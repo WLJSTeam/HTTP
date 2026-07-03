@@ -225,7 +225,7 @@ $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 parseRequest[client_, dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
 Module[{request, head, headLength, bodyPosition, bodyByteArray,
-    headline, method, url, version, headers, body, encoding},
+    headline, method, url, version, headers},
 
     request = <|
         "Client" -> client,
@@ -280,8 +280,8 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         request["Headers"];
 
     request["ContentCharset"] =
-        If[# === Null || !StringContainsQ[#, "charset=", IgnoreCase -> True], Null,
-            StringTrim @ StringExtract[#, "charset=" -> 2, ";" -> 1]
+        If[# === Null || !StringContainsQ[#, "charset=", IgnoreCase -> True], "UTF-8",
+            StringTrim[StringExtract[#, "charset=" -> 2, ";" -> 1]] /. $charsetToEncoding
         ]& @
         If[Length[#] > 0, #[[1]], Null]& @
         KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
@@ -423,7 +423,6 @@ Which[
 
 deserializeRequestBody[request_Association?AssociationQ] :=
 With[{
-    contentEncoding = request["ContentEncoding"],
     contentType = request["ContentType"],
     bodyByteArray = request["BodyByteArray"],
     body = request["Body"]
@@ -431,16 +430,11 @@ With[{
     If[Length[bodyByteArray] == 0 || StringLength[body] == 0,
         Null,
     (*Else*)
-        With[{
-            $bodyByteArray = decodeBody[bodyByteArray, contentEncoding],
-            $body = decodeBody[body, contentEncoding]
-        },
-            Switch[contentType,
-                "application/json", ImportString[$bodyString, "RawJSON"],
-                "application/x-www-form-urlencoded", Association @ URLQueryDecode[$bodyString]
-            ]
+        Switch[contentType,
+            "application/json", ImportString[body, "RawJSON"],
+            "application/x-www-form-urlencoded", Association @ URLQueryDecode[body]
         ]
-    ];
+    ]
 ];
 
 
