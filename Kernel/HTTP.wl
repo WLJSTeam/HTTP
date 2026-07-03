@@ -287,14 +287,17 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
         request["Headers"];
 
-    With[{$bodyByteArray = bodyByteArray, $encoding = request["ContentEncoding"]},
+    With[{
+        $bodyByteArray = decodeBody[bodyByteArray, request["ContentEncoding"]],
+        $contentCharset = request["ContentCharset"]
+    },
         request["BodyByteArray"] := $bodyByteArray;
         request["BodyBytes"] := Normal[$bodyByteArray];
-        request["Body"] := ByteArrayToString[$bodyByteArray, $encoding];
+        request["Body"] := ByteArrayToString[$bodyByteArray, $contentCharset];
     ];
 
-    With[{$data = conditionApply[deserializer, defaultDeserializer][request]},
-        request["Content"] := $data;
+    With[{$content = conditionApply[deserializer, defaultDeserializer][request]},
+        request["Content"] := $content;
     ];
 
     request
