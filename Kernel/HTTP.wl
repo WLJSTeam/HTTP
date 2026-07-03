@@ -249,7 +249,7 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
     headLength = StringLength[head];
 
     headline = StringExtract[head, $httpEndOfHeader -> 1];
-    headers = Map[StringTrim][StringExtract[head, $httpEndOfHeader -> 2 ;; ], $httpEndOfHeader];
+    headers = Map[StringTrim] @ StringExtract[head, $httpEndOfHeader -> 2 ;; ];
 
     bodyPosition = If[dataByteArray[[headLength + 1]] == 13, headLength + 5, headLength + 3];
     bodyByteArray = dataByteArray[[bodyPosition ;; ]];
