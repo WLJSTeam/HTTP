@@ -235,9 +235,8 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         "Query" -> <||>,
         "Version" -> Null,
         "Headers" -> <||>,
-        "ContentType" -> Null,
+        "ContentType" -> <||>,
         "ContentEncoding" -> Null,
-        "ContentCharset" -> Null,
         "TransferEncoding" -> Null,
         "BodyByteArray" :> Null,
         "BodyBytes" :> Null,
@@ -269,23 +268,10 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
         Map[StringSplit[#, ":" ]&] @
         headers;
 
-    request["ContentEncoding"] =
-        If[Length[#] > 0, #[[1]], Null]& @
-        KeySelect[StringMatchQ[#, "content-encoding", IgnoreCase -> True]&] @
-        request["Headers"];
+    request["ContentEncoding"] = getHeaderValue[request["Headers"], "content-encoding"];
+    request["TransferEncoding"] = getHeaderValue[request["Headers"], "transfer-encoding"];
 
-    request["ContentType"] :=
-        If[Length[#] > 0, StringSplit[#[[1]], ";"][[1]], Null]& @
-        KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
-        request["Headers"];
-
-    request["ContentCharset"] =
-        If[# === Null || !StringContainsQ[#, "charset=", IgnoreCase -> True], "UTF-8",
-            StringTrim[StringExtract[#, "charset=" -> 2, ";" -> 1]] /. $charsetToEncoding
-        ]& @
-        If[Length[#] > 0, #[[1]], Null]& @
-        KeySelect[StringMatchQ[#, "content-type", IgnoreCase -> True]&] @
-        request["Headers"];
+    request["ContentType"] := getHeaderValue[request["Headers"], "content-type"];
 
     With[{
         $bodyByteArray = decodeBody[bodyByteArray, request["ContentEncoding"]],
@@ -302,6 +288,12 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
 
     request
 ];
+
+
+getHeaderValue[headers, header_String] :=
+If[Length[#] > 0, #[[1]], Null]& @
+KeySelect[StringMatchQ[#, header, IgnoreCase -> True]&] @
+headers;
 
 
 urlPathToFilePath[path_String] :=
@@ -358,8 +350,7 @@ If[StringContainsQ[contentType, "charset="],
 
 
 getContentType[request_Association] :=
-If[Length[#] > 0, #[[1]], "utf-8"]& @
-KeySelect[request["Headers"], StringMatchQ[#, "content-type", IgnoreCase -> True]&];
+getHeaderValue[request["Headers"], "content-type"];
 
 
 getContentLength[data_] :=
@@ -430,9 +421,10 @@ With[{
     If[Length[bodyByteArray] == 0 || StringLength[body] == 0,
         Null,
     (*Else*)
-        Switch[contentType,
+        Switch[contentType[],
             "application/json", ImportString[body, "RawJSON"],
-            "application/x-www-form-urlencoded", Association @ URLQueryDecode[body]
+            "application/x-www-form-urlencoded", Association @ URLQueryDecode[body],
+            "multipart/form-data", parseMultipartFormData[bodyByteArray, contentType]
         ]
     ]
 ];
