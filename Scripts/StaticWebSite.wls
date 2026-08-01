@@ -31,7 +31,10 @@ Get["WLJS`Objects`"];
 Get["WLJS`HTTP`"];
 
 
-server = CSocketOpen[8080];
+port = First @ Flatten[{SequenceCases[#, {"-p" | "--port", port_} :> ToExpression[port]]& @ $ScriptCommandLine, 8080}];
+
+
+server = CSocketOpen[port];
 
 
 handler = CSocketHandler[];
@@ -60,7 +63,10 @@ $count = 0;
 count[_] := Echo[$count++, "COUNT: "];
 
 
-Echo @ SocketListen[CSocketList[{server}], handler];
+SocketListen[CSocketList[{server}], handler];
+
+
+UsingFrontEnd[SystemOpen["http://localhost:8080/file.html"]]
 
 
 While[True,
