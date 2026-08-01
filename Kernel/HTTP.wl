@@ -223,12 +223,12 @@ $httpEndOfHeader = {"\r\n", "\n"};
 $errorResponse = <|"Code" -> 404, "Body" -> "Not found"|>;
 
 
-parseRequest[client_, dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
+parseRequest[sourceSocket_, dataByteArray_ByteArray, deserializer_, defaultDeserializer_] :=
 Module[{request, head, headLength, bodyPosition, bodyByteArray,
     headline, method, url, version, headers},
 
     request = <|
-        "Client" -> client,
+        "SourceSocket" -> sourceSocket,
         "DataByteArray" -> dataByteArray,
         "Method" -> Null,
         "Path" -> Null,
@@ -403,8 +403,6 @@ body;
 
 decodeBody[body_, contentEncoding_] :=
 Which[
-    StringQ[body] && StringMatchQ[contentEncoding, "gzip", IgnoreCase -> True],
-        ByteArrayToString[ImportByteArray[StringToByteArray[body], "GZIP"], "UTF-8"],
     ByteArrayQ[body] && StringMatchQ[contentEncoding, "gzip", IgnoreCase -> True],
         ImportByteArray[body, "GZIP"],
     True,
