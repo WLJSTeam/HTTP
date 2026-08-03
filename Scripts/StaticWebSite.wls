@@ -70,5 +70,6 @@ UsingFrontEnd[SystemOpen["http://localhost:8080/file.html"]]
 
 
 While[True,
+    Get["WLJS`HTTP`"];
     Pause[10];
 ];

@@ -271,7 +271,8 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
     request["ContentEncoding"] = getHeaderValue[request["Headers"], "content-encoding"];
     request["TransferEncoding"] = getHeaderValue[request["Headers"], "transfer-encoding"];
 
-    request["ContentType"] := getHeaderValue[request["Headers"], "content-type"];
+    request["ContentType"] = getHeaderValue[request["Headers"], "content-type"];
+    request["ContentCharset"] = getHeaderParameter[request["Headers"], "content-type", "charset"];
 
     With[{
         $bodyByteArray = decodeBody[bodyByteArray, request["ContentEncoding"]],
@@ -290,10 +291,30 @@ Module[{request, head, headLength, bodyPosition, bodyByteArray,
 ];
 
 
-getHeaderValue[headers, header_String] :=
+parseHeader[header_String] :=
+With[{
+    name = StringTrim[StringExtract[header, ":" -> 1]]}, {
+    fullStringValue = StringTrim[StringTrim[header, StartOfString ~~ name ~~ ":"]]}, {
+    value = StringTrim[StringExtract[fullStringValue, ";" -> 1]]}, {
+    fullStringParameters = StringTrim[StringTrim[fullStringValue, StartOfString ~~ value ~~ ";"]]}, {
+    parameters =
+        Association @
+        Map[Apply[Rule] @ Map[StringTrim, StringSplit[#, "="]]&] @
+        Map[StringTrim] @
+        StringSplit[fullStringParameters, ";"]
+},
+    name -> <|"Value" -> value, "Parameters" -> parameters|>
+];
+
+
+getHeaderValue[headers_Association?AssociationQ, header_String] :=
 If[Length[#] > 0, #[[1]], Null]& @
 KeySelect[StringMatchQ[#, header, IgnoreCase -> True]&] @
 headers;
+
+
+getHeaderParameter[headers_Association?AssociationQ, header_String, parameter_String] :=
+
 
 
 urlPathToFilePath[path_String] :=
