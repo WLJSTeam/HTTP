@@ -17,17 +17,19 @@ projectsDirectory = FileNameJoin[{$HomeDirectory, "Projects"}];
 pacletDirectories = Map[FileNameJoin[{projectsDirectory, #}]&] @ {
     "Objects",
     "HTTP",
-    "CSockets",
-    "Internal"
+    "CSockets"
 };
 
 
 Map[PacletDirectoryLoad, pacletDirectories];
 
 
-Get["WLJS`Internal`Console`"];
 Get["WLJS`CSockets`"];
+
+
 Get["WLJS`Objects`"];
+
+
 Get["WLJS`HTTP`"];
 
 
@@ -43,33 +45,36 @@ handler = CSocketHandler[];
 http = HTTPHandler[];
 
 
-handler += http;
+handler["Accumulator"] = HTTPPacketLength;
 
 
-http["MessageHandler", "GETFile"] =
-    HTTPGETFileQ[#, {"html", "txt", "png", "svg", "js", "css"}]& -> HTTPGETFile;
+handler["Received"] = http;
 
 
-http["MessageHandler", "APICount"] =
-    HTTPRequestMatchQ[#, <|"Path" -> "/api/" ~~ __|>]& -> Function[<|
+http["MessageHandler", "GETFile"] = HTTPGETFileQ[#, {"html", "txt", "png", "svg", "js", "css"}]& -> HTTPGETFile;
+
+
+http["MessageHandler", "APICount"] = HTTPRequestMatchQ[#, <|"Path" -> "/api/" ~~ __|>]& -> Function[
+    <|
         "Body" -> ToExpression[Last[StringSplit[#Path, "/"]]][#Query],
         "ContentType" -> "application/json"
-    |>];
+    |>
+];
 
 
 $count = 0;
 
 
-count[_] := Echo[$count++, "COUNT: "];
+count[_] :=
+Echo[$count++, "COUNT: "];
 
 
-SocketListen[CSocketList[{server}], handler];
+SocketListen[server, handler];
 
 
-UsingFrontEnd[SystemOpen["http://localhost:8080/file.html"]]
+UsingFrontEnd[SystemOpen["http://localhost:8080/file.html"]];
 
 
 While[True,
-    Get["WLJS`HTTP`"];
     Pause[10];
 ];

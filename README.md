@@ -9,6 +9,165 @@ Via Wolfram Paclet system
 PacletInstall["KirillBelov/HTTP"]
 ```
 
+## Independent request processing
+
+`HTTPHandler` transforms an association containing a **complete HTTP request** in
+`"DataByteArray"` into a `ByteArray` containing the HTTP response. It does not read,
+write, close sockets, change the transport handler, or assign `"Result"`.
+`"SourceSocket"` is optional. Incoming metadata is available to application callbacks
+alongside parsed `"Method"`, `"Path"`, `"Query"`, `"Headers"`, `"BodyByteArray"`,
+`"Body"`, and `"Content"` fields.
+
+```wolfram
+Needs["WLJS`HTTP`"];
+
+http = HTTPHandler[];
+http["MessageHandler", "health"] =
+    (HTTPRequestMatchQ[#, <|"Method" -> "GET", "Path" -> "/health"|>]& ) ->
+    Function[<|"Body" -> "ok", "ContentType" -> "text/plain; charset=utf-8"|>];
+
+packet = <|"DataByteArray" -> StringToByteArray["GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n"]|>;
+responseBytes = http[packet];
+processedPacket = Append[packet, "Result" -> responseBytes];
+```
+
+Callbacks can return a string, `ByteArray`, `HTTPResponse`, or an association with
+`"Body"`, `"StatusCode"`, `"ContentType"`, and `"Headers"`. Legacy `"Code"` is also
+accepted. The default response is 404. `"Serializer"`/`"DefaultSerializer"` process
+response bodies; `"Deserializer"`/`"DefaultDeserializer"` process request content.
+Response strings use UTF-8 unless an explicit charset is supplied; `Content-Length`
+counts transmitted bytes, including compression when requested.
+
+## Content serialization
+
+`HTTPSerialize[body, contentType: Automatic]` returns
+`<|"Body" -> ByteArray[...], "ContentType" -> "..."|>`. The body is a payload, not a
+response envelope: an association passed here is JSON data, even if it has a `"Body"` key.
+`HTTPDeserialize[bytes, contentType]` returns decoded content. After `Needs["WLJS`HTTP`"]`
+both functions can be used without constructing a handler or loading CSockets.
+`HTTPDeserialize[request]` reads the parsed request's `"BodyByteArray"` and `"ContentType"`
+(or `"Headers"`). Whole empty request bodies decode to `Null`; unknown media types
+preserve their bytes. Invalid supported content returns `$Failed` with a message;
+HTTPHandler then returns `$Failed` without invoking the application callback.
+
+| Content-Type | Serialization / deserialization |
+| --- | --- |
+| `application/json`, `application/*+json` | Associations, lists, numbers, booleans, `Null` / JSON data |
+| `text/*` (plain text, HTML, CSS, etc.) | Strings with the declared charset (UTF-8 by default) |
+| `application/x-www-form-urlencoded` | Association or list of rules / association; repeated keys become lists |
+| `multipart/form-data` | Association or ordered list of part descriptors / ordered list of parts |
+| `application/xml`, `text/xml`, `*+xml` | `XMLElement` or `XMLObject` / imported XML document |
+| `text/csv`, `text/tab-separated-values` | Tables / imported tables |
+| PNG, JPEG, GIF, BMP, TIFF, SVG | Wolfram image/graphics values / Wolfram import result |
+| `application/octet-stream` and unknown types | `ByteArray` preserved unchanged |
+| `application/vnd.wolfram.expression+json` | ExpressionJSON export/import |
+
+Automatic serialization chooses JSON for associations/lists/scalars, PNG for `Image`,
+SVG for `Graphics`, XML for XML expressions, and octet-stream for bytes. Strings keep
+the existing HTML default. `File[path]` reads the file as bytes and infers its media
+type from the extension; unknown extensions use octet-stream. Files and ByteArray
+payloads are treated as already encoded. A string with an explicit structured media
+type (e.g. JSON or XML) is also treated as already encoded text.
+
+```wolfram
+encoded = HTTPSerialize[<|"ok" -> True|>];
+data = HTTPDeserialize[encoded["Body"], encoded["ContentType"]];
+
+http["DefaultMessageHandler"] = Function[
+    <|"Body" -> <|"ok" -> True|>, "StatusCode" -> 200|>
+];
+(* Content-Type is automatically application/json; charset=utf-8. *)
+
+http["DefaultMessageHandler"] = Function[
+    <|"Body" -> {{"name", "value"}, {"a", "1"}}, "ContentType" -> "text/csv"|>
+];
+```
+
+The existing per-handler conditional `"Serializer"` and `"Deserializer"` maps take
+precedence over the built-ins. Serializer callbacks receive the body and can return
+bytes, text, or an association with `"Body"`, `"ContentType"`, and optional metadata.
+Deserializer callbacks receive the complete parsed request.
+
+### Multipart forms and uploads
+
+Parts follow RFC 7578: duplicate field names remain separate parts in wire order.
+Each decoded part contains `"Name"`, `"Headers"`, `"ContentType"`, `"Body"` (the exact
+bytes), and `"Content"` (decoded data). File parts also have `"FileName"`.
+Empty text fields decode to `""`; empty binary parts retain an empty ByteArray.
+Uploads stay in memory; the library does not write filenames supplied by clients.
+Nested legacy `multipart/mixed` content is retained as bytes.
+
+```wolfram
+form = HTTPSerialize[{
+    <|"Name" -> "tag", "Body" -> "one"|>,
+    <|"Name" -> "tag", "Body" -> "two"|>,
+    <|"Name" -> "upload", "FileName" -> "data.bin", "Body" -> ByteArray[{0, 255}]|>
+}, "multipart/form-data"];
+parts = HTTPDeserialize[form["Body"], form["ContentType"]];
+```
+
+Serialization generates a boundary and adds it to Content-Type. An explicit boundary
+is accepted if valid and absent from the encoded parts. A missing or truncated
+boundary on input returns `$Failed`. Quoted header parameters (including semicolons
+in filenames) are supported.
+
+### Content-Encoding
+
+HTTPHandler decodes request `Content-Encoding: gzip` before deserialization.
+Use `"ContentEncoding" -> "gzip"` or a `"Content-Encoding"` response header to compress
+the serialized response; Content-Length is recalculated after compression. Identity
+and comma-separated sequences of gzip/identity are supported. Other encodings return
+`$Failed`. Raw `HTTPResponse` results are exported as supplied.
+
+```wolfram
+http["DefaultMessageHandler"] = Function[
+    <|"Body" -> <|"ok" -> True|>, "ContentEncoding" -> "gzip"|>
+];
+```
+
+## CSockets integration
+
+Configure the transport explicitly (the old `handler += http` shorthand is removed):
+
+```wolfram
+Needs["WLJS`CSockets`"];
+
+handler = CSocketHandler[
+    "Accumulator" -> HTTPPacketLength,
+    "Received" -> http
+];
+server = CSocketOpen["127.0.0.1", 8080];
+listener = SocketListen[server, handler];
+```
+
+CSocketHandler assembles the request, invokes `http[packet]`, stores its returned
+bytes in `"Result"`, and sends them. Its `"Logger"` observes the packet after sending.
+Use the default identity transport serializer so the response bytes pass through.
+
+`HTTPPacketQ` recognizes HTTP request packets. `HTTPPacketLength` computes the first
+request's size from the header delimiter and `Content-Length`, excluding subsequent
+pipelined requests. With the current CSockets accumulator contract, **the complete
+HTTP header must be present in the first fragment**: CSockets calculates expected
+length only once. A split body is supported; split headers and chunked transfer
+framing need a transport framing strategy before invoking HTTPHandler.
+
+Run the live example with `wolframscript -f Test.wls`, or the static website example
+with `wolframscript -f Scripts/StaticWebSite.wls`.
+
+## Source layout
+
+All runtime code lives in `Kernel/HTTP.wl`: HTTP processing, content serialization,
+MIME/charset tables and the legacy ``WLJS`HTTP`Extensions` `` helpers. Both package
+contexts load from this file. `PacletInfo.wl` remains separate for paclet registration.
+The former `Kernel/Serialization.wl` and `Kernel/Extensions.wl` are merged into it.
+`AGENTS.md` describes the WL formatting rules and the transport boundary.
+
+## Tests
+
+Run `wolframscript -f Tests/RunTests.wls` for content format tests, independent processing tests and the
+CSocketHandler integration test. The HTTP package itself needs Objects, not CSockets;
+the integration test loads the sibling CSockets checkout.
+
 ## Examples
 
 Clone this repository

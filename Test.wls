@@ -1,64 +1,42 @@
 (* :Package: *)
 
-
-(*```
-    cd ~/Projects
-    git clone https://github.com/WLJSTeam/Objects.git
-    git clone https://github.com/WLJSTeam/Internal.git
-    git clone https://github.com/WLJSTeam/HTTP.git
-    git clone https://github.com/WLJSTeam/CSockets.git
-```*)
+(* Run from the repository: wolframscript -f Test.wls *)
 
 
-projectsDirectory = FileNameJoin[{$HomeDirectory, "Projects"}];
+projectsDirectory = DirectoryName[$InputFileName, 2];
 
 
-pacletDirectories = Map[FileNameJoin[{projectsDirectory, #}]&] @ {
-    "Objects",
-    "Internal",
-    "HTTP",
-    "CSockets"
-};
-
-
-Map[PacletDirectoryLoad, pacletDirectories];
+Scan[PacletDirectoryLoad[FileNameJoin[{projectsDirectory, #}]]&, {"Objects", "HTTP", "CSockets"}];
 
 
 Get["WLJS`CSockets`"];
+
+
 Get["WLJS`HTTP`"];
-Get["WLJS`Internal`"];
-Get["WLJS`Objects`"];
-
-
-(*low level API*)
-
-server = CSocketOpen[8080];
-
-
-handler = CSocketHandler[]
-
-
-handler["DefaultHandler"] = Function[
-    Echo[#Data];
-    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nWLJS Server."
-];
-
-
-(*http level API*)
 
 
 http = HTTPHandler[];
 
 
-http["MessageHandler", "GETFILE"] = GetFileRequestQ["html"] -> ImportFile;
+http["DefaultMessageHandler"] = Function[<|"Body" -> "WLJS Server.", "ContentType" -> "text/plain; charset=utf-8"|>];
 
 
-(*entry point*)
+handler = CSocketHandler["Accumulator" -> HTTPPacketLength, "Received" -> http];
 
 
-SocketListen[server, handler];
+server = CSocketOpen["127.0.0.1", 8080];
 
 
-While[True,
-    Pause[10];
-];
+listener = SocketListen[server, handler];
+
+
+CheckAbort[While[True, Pause[0.1]], Null];
+
+
+RemoveAsynchronousTask[listener];
+
+
+Pause[1.1];
+
+
+Close[server];
